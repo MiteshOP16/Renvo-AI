@@ -10,7 +10,7 @@ None configured yet.
 The application is built using **Streamlit** (Python web framework) and leverages **Pandas** and **NumPy** for data processing. For analysis, it uses **Scikit-learn** and **SciPy**, while **Plotly**, **Seaborn**, and **Matplotlib** handle visualization. AI assistance is integrated via the **Groq API** (llama-3.1-8b-instant model). Reporting is managed with **Jinja2** templates and **ReportLab** for PDF generation.
 
 The core structure includes:
-- **Streamlit Pages**: Home page with integrated data upload, then dedicated pages for Anomaly Detection & Duplicate Removal, Column Analysis, Cleaning Wizard, Visualization, Hypothesis Analysis, Data Balancer, AI Assistant, and Reports.
+- **Streamlit Pages**: Home page with integrated data upload, then dedicated pages for Anomaly Detection & Duplicate Removal, Data Transformation, Column Analysis, Cleaning Wizard, Visualization, Hypothesis Analysis, Data Balancer, AI Assistant, and Reports.
 - **Modular Design**: Functionality is organized into `modules/` for AI integration, anomaly detection, cleaning engine, data analysis, hypothesis testing, report generation, survey weights, and utility functions.
 - **UI/UX Decisions**: Features include interactive visualization builders with multi-column selection and 9 chart types, enhanced distribution analysis with statistical explanations and visual interpretations, and multi-method statistical outlier detection.
 - **Reporting**: Professional PDF reports with modern styling, color palettes, improved table styling, enhanced typography, and color-coded messages are generated using ReportLab, alongside Markdown, HTML, and JSON export options. Reports include executive summaries, anomaly detection results, column analysis summaries, embedded high-resolution visualizations, and a cleaning operations audit trail.
@@ -34,6 +34,14 @@ The core structure includes:
 - **Visualization**: Plotly, Seaborn, Matplotlib
 - **AI Assistant**: Groq API (llama-3.1-8b-instant model)
 - **Reporting**: Jinja2, ReportLab
+
+## Recent Updates (Dec 2025)
+- **Data Transformation Feature (Dec 14, 2025)**: Added new Data Transformation page (positioned between Anomaly Detection and Column Analysis) with comprehensive data manipulation capabilities:
+    - **Merge/Split Columns**: Toggle between merge and split modes. Merge supports multiple columns with individual separators, missing value handling, and DateTime-aware merging (year, month, day, hour, etc.). Split supports regular separators and DateTime component extraction.
+    - **Expand JSON Data**: Automatic detection of JSON/dictionary columns, key extraction into new columns, array explosion into multiple rows, and reverse operation (columns to JSON with grouping support).
+    - **Data Type Conversion**: Support for Integer, Float, String, Boolean, DateTime, Date, Time, Categorical, List, and Dictionary types with validation and error handling.
+    - **Preview Functionality**: All operations include preview before applying changes.
+    - **Undo Support**: Integrated with existing backup/undo system.
 
 ## Recent Updates (Nov 2025)
 - **Data Balancer Fix and Enhancement (Nov 30, 2025)**: Fixed critical '_validate_data' error affecting all balancing methods by implementing proper NumPy array conversion pipeline with `_prepare_features` and `_prepare_target` methods. Added safe fit_resample wrapper that handles label encoding for categorical targets and properly reverses encoding after balancing. New split data flow added: users can now choose between "Use Whole Data" or "Use Split Data" with configurable stratified train/test split percentage. Test data is preserved unchanged and available for download at the bottom of the page. Proper validation blocks usage until data is cleaned.
