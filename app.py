@@ -31,13 +31,14 @@ def main():
     
     st.sidebar.markdown("""
     1. **Anomaly Detection** - Detect and fix data type mismatches and duplicates
-    2. **Column Analysis** - Detailed analysis of individual columns  
-    3. **Cleaning Wizard** - Apply cleaning methods with integrated weights
-    4. **Visualization** - Create interactive visualizations
-    5. **Hypothesis Analysis** - Perform statistical hypothesis tests
-    6. **Data Balancer** - Balance datasets for machine learning
-    7. **AI Assistant** - Get expert advice and explanations
-    8. **Reports** - Generate comprehensive cleaning reports
+    2. **Data Transformation** - Merge/split columns, expand JSON data
+    3. **Column Analysis** - Detailed analysis of individual columns  
+    4. **Cleaning Wizard** - Apply cleaning methods with integrated weights
+    5. **Visualization** - Create interactive visualizations
+    6. **Hypothesis Analysis** - Perform statistical hypothesis tests
+    7. **Data Balancer** - Balance datasets for machine learning
+    8. **AI Assistant** - Get expert advice and explanations
+    9. **Reports** - Generate comprehensive cleaning reports
     """)
     
     st.divider()
