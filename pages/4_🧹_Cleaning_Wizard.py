@@ -6,16 +6,15 @@ from modules.data_analyzer import ColumnAnalyzer
 from modules.cleaning_engine import DataCleaningEngine
 from modules.visualization import DataVisualizer
 from modules.ai_assistant import AIAssistant
-from modules.survey_weights import SurveyWeightsManager
 
 # Initialize session state
 
 
-st.title("🧙‍♀️ Data Cleaning Wizard with Integrated Weights")
+st.title("🧙‍♀️ Data Cleaning Wizard")
 
 st.markdown("""
-Apply comprehensive data cleaning operations with integrated survey weights. All cleaning methods 
-consider survey weights when calculating impact assessments and provide both weighted and unweighted statistics.
+Apply comprehensive data cleaning operations to your dataset. All cleaning methods 
+provide detailed impact assessments and statistics.
 """)
 
 # Check if dataset is loaded
@@ -28,14 +27,6 @@ cleaning_engine = DataCleaningEngine()
 visualizer = DataVisualizer()
 analyzer = st.session_state.data_analyzer
 
-# Get weights manager from session state
-weights_manager = st.session_state.get('weights_manager')
-
-# Display weights status
-if weights_manager and weights_manager.weights_column:
-    st.info(f"⚖️ **Survey weights active:** Using '{weights_manager.weights_column}' for weighted analysis")
-else:
-    st.info("📊 **Unweighted analysis:** No survey weights configured")
 
 # Check for inter-column violations before cleaning
 if 'inter_column_violations' not in st.session_state:
@@ -76,77 +67,8 @@ with control_cols[3]:
     redo_available = len(st.session_state.get('redo_stack', []))
     st.caption(f"Undo: {undo_available} | Redo: {redo_available}")
 
-# Survey Weights Configuration Section
-st.subheader("1. Survey Weights Configuration")
-
-st.markdown("""
-Configure survey weights to account for sampling design effects. All cleaning operations will 
-provide both weighted and unweighted impact assessments.
-""")
-
-# Weights configuration
-weights_cols = st.columns([2, 2])
-
-with weights_cols[0]:
-    numeric_columns = df.select_dtypes(include=[np.number]).columns.tolist()
-    
-    weights_col = st.selectbox(
-        "Select weights column:",
-        options=['None'] + numeric_columns,
-        key="weights_selection",
-        help="Choose the column containing survey design weights, or select 'None' for unweighted analysis"
-    )
-
-with weights_cols[1]:
-    if weights_col != 'None':
-        if st.button("Configure Weights", type="primary"):
-            try:
-                # Always initialize a fresh weights manager for configuration
-                st.session_state.weights_manager = SurveyWeightsManager()
-                
-                validation_result = st.session_state.weights_manager.set_weights_column(df, weights_col)
-                
-                if validation_result['valid']:
-                    st.success(f"✅ Weights column '{weights_col}' configured successfully!")
-                    
-                    if validation_result['warnings']:
-                        st.warning("⚠️ Warnings:")
-                        for warning in validation_result['warnings']:
-                            st.write(f"• {warning}")
-                else:
-                    st.error("❌ Invalid weights column:")
-                    for error in validation_result['errors']:
-                        st.write(f"• {error}")
-                        
-            except Exception as e:
-                st.error(f"❌ Error configuring weights: {str(e)}")
-    else:
-        # Clear weights configuration if 'None' selected
-        if 'weights_manager' in st.session_state:
-            st.session_state.weights_manager = None
-        st.info("ℹ️ Proceeding with unweighted analysis")
-
-# Display current weights status
-weights_manager = st.session_state.get('weights_manager')
-if weights_manager and weights_manager.weights_column:
-    weights_data = df[weights_manager.weights_column].dropna()
-    
-    # Show weights diagnostics
-    diagnostics_cols = st.columns(4)
-    with diagnostics_cols[0]:
-        st.metric("Mean Weight", f"{weights_data.mean():.3f}")
-    with diagnostics_cols[1]:
-        st.metric("Weight Range", f"{weights_data.min():.2f} - {weights_data.max():.2f}")
-    with diagnostics_cols[2]:
-        # Calculate design effect estimate
-        deff = (weights_data.sum()**2) / (len(weights_data) * (weights_data**2).sum())
-        st.metric("Design Effect", f"{deff:.2f}")
-    with diagnostics_cols[3]:
-        effective_n = len(weights_data) / deff
-        st.metric("Effective N", f"{effective_n:.0f}")
-
 # Column selection and method selection
-st.subheader("2. Select Column and Cleaning Method")
+st.subheader("1. Select Column and Cleaning Method")
 
 selection_cols = st.columns([2, 2])
 
@@ -234,8 +156,6 @@ available_methods = {
         'isolation_forest': '🌲 Isolation Forest'
     },
     'data_quality': {
-        'type_standardization': '🔄 Type Standardization',
-        'remove_duplicates': '🔄 Remove Duplicates',
         'trim_whitespace': '✂️ Trim Whitespace',
         'standardize_case': '🔤 Standardize Case'
     }
@@ -273,8 +193,6 @@ elif method_name == 'cap_outliers':
     parameters['method'] = st.selectbox("Capping method", ['iqr', 'percentile'])
     if parameters['method'] == 'iqr':
         parameters['multiplier'] = st.slider("IQR multiplier", 1.0, 3.0, 1.5)
-elif method_name == 'type_standardization':
-    parameters['target_type'] = st.selectbox("Target type", ['numeric', 'string', 'datetime'])
 elif method_name == 'standardize_case':
     parameters['case_type'] = st.selectbox("Case type", ['lower', 'upper', 'title'])
 elif method_name == 'isolation_forest':
@@ -419,7 +337,7 @@ if 'preview_results' in st.session_state:
         st.info("No changes detected in the data")
 
 # AI Guidance Section
-st.subheader("6. 🤖 AI Guidance")
+st.subheader("5. 🤖 AI Guidance")
 
 ai_guidance_cols = st.columns([3, 1])
 
@@ -485,7 +403,7 @@ if st.button("🤖 Get AI Guidance") and ai_question.strip():
         st.markdown(response)
 
 # Cleaning History
-st.subheader("7. 📝 Cleaning History")
+st.subheader("6. 📝 Cleaning History")
 
 if st.session_state.cleaning_history:
     # Show history for current column

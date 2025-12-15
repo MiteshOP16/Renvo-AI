@@ -30,15 +30,22 @@ def main():
     st.sidebar.markdown("Use the pages in the sidebar to navigate through the application:")
     
     st.sidebar.markdown("""
-    1. **Anomaly Detection** - Detect and fix data type mismatches and duplicates
-    2. **Data Transformation** - Merge/split columns, expand JSON data
-    3. **Column Analysis** - Detailed analysis of individual columns  
-    4. **Cleaning Wizard** - Apply cleaning methods with integrated weights
-    5. **Visualization** - Create interactive visualizations
-    6. **Hypothesis Analysis** - Perform statistical hypothesis tests
-    7. **Data Balancer** - Balance datasets for machine learning
-    8. **AI Assistant** - Get expert advice and explanations
-    9. **Reports** - Generate comprehensive cleaning reports
+    **Data Cleaning:**
+    - Anomaly Detection - Detect and fix data issues
+    - Data Transformation - Merge/split columns, expand JSON
+    - Column Analysis - Detailed column analysis  
+    - Cleaning Wizard - Apply cleaning methods
+    
+    **Data Analysis:**
+    - Hypothesis Testing - Statistical hypothesis tests
+    - Data Balancer - Balance datasets for ML
+    
+    **Data Visualization:**
+    - Visualization - Create interactive charts
+    - Reports - Generate cleaning reports
+    
+    **AI:**
+    - AI Assistant - Get expert advice
     """)
     
     st.divider()
@@ -181,10 +188,17 @@ def main():
                 
                 with editor_cols[2]:
                     current_type = st.session_state.column_types.get(col, 'unknown')
+                    column_type_options = type_options.copy()
+                    if current_type and current_type not in column_type_options:
+                        column_type_options.append(current_type)
+                    try:
+                        type_index = column_type_options.index(current_type)
+                    except ValueError:
+                        type_index = column_type_options.index('unknown') if 'unknown' in column_type_options else 0
                     selected_type = st.selectbox(
                         f"Type for {col}",
-                        type_options,
-                        index=type_options.index(current_type) if current_type in type_options else 0,
+                        column_type_options,
+                        index=type_index,
                         key=f"type_{col}",
                         label_visibility="collapsed"
                     )

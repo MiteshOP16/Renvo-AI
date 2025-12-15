@@ -22,8 +22,7 @@ All operations support various data types including dates, times, and complex st
 
 transformation_tabs = st.tabs([
     "Merge / Split Columns",
-    "Expand JSON Data", 
-    "Data Type Conversion"
+    "Expand JSON Data"
 ])
 
 with transformation_tabs[0]:
@@ -452,114 +451,6 @@ with transformation_tabs[1]:
                         st.dataframe(result_df[[*columns_to_combine, new_json_column]], use_container_width=True)
                     else:
                         st.error(f"Preview failed: {operation_info['error']}")
-
-with transformation_tabs[2]:
-    st.header("Data Type Conversion")
-    st.markdown("""
-    Convert columns to different data types with validation and error handling.
-    
-    **Supported Types:** Integer, Float, String, Boolean, DateTime, Date, Time, 
-    Categorical, List, Dictionary
-    """)
-    
-    type_info_expander = st.expander("Data Type Reference", expanded=False)
-    with type_info_expander:
-        st.markdown("""
-        | Type | Description | Example |
-        |------|-------------|---------|
-        | **Integer** | Whole numbers (supports nullable) | 1, 42, -7 |
-        | **Float** | Decimal numbers | 3.14, -0.5, 100.0 |
-        | **String** | Text data | "hello", "2024-01-15" |
-        | **Boolean** | True/False values | True, False, 1, 0, "yes", "no" |
-        | **DateTime** | Date and time combined | 2024-01-15 14:30:00 |
-        | **Date** | Date only | 2024-01-15 |
-        | **Time** | Time only | 14:30:00 |
-        | **Categorical** | Fixed set of categories | "A", "B", "C" |
-        | **List** | Array of values | [1, 2, 3], ["a", "b"] |
-        | **Dictionary** | Key-value pairs | {"name": "John", "age": 30} |
-        """)
-    
-    available_columns = df.columns.tolist()
-    convert_column = st.selectbox(
-        "Select column to convert",
-        options=available_columns,
-        key="convert_col_select"
-    )
-    
-    if convert_column:
-        current_dtype = transformer.detect_column_dtype(df[convert_column])
-        st.info(f"Current detected type: **{current_dtype}**")
-        
-        sample_values = df[convert_column].dropna().head(5).tolist()
-        st.markdown("**Sample values:**")
-        st.write(sample_values)
-        
-        target_dtype = st.selectbox(
-            "Convert to type",
-            options=['integer', 'float', 'string', 'boolean', 'datetime', 
-                     'date', 'time', 'categorical', 'list', 'dictionary'],
-            help="Select the target data type"
-        )
-        
-        datetime_format = None
-        if target_dtype in ['datetime', 'date', 'time']:
-            use_custom_format = st.checkbox("Use custom datetime format")
-            if use_custom_format:
-                datetime_format = st.text_input(
-                    "DateTime format",
-                    value="%Y-%m-%d %H:%M:%S" if target_dtype == 'datetime' else "%Y-%m-%d",
-                    help="strftime format string (e.g., %Y-%m-%d for dates)"
-                )
-        
-        error_handling = st.selectbox(
-            "Error handling",
-            options=['coerce', 'raise'],
-            format_func=lambda x: {
-                'coerce': 'Convert errors to null (recommended)',
-                'raise': 'Stop on first error'
-            }[x]
-        )
-        
-        col1, col2 = st.columns([1, 1])
-        with col1:
-            if st.button("Apply Conversion", type="primary"):
-                create_backup()
-                
-                result_df, operation_info = transformer.convert_column_dtype(
-                    df=df,
-                    column=convert_column,
-                    target_dtype=target_dtype,
-                    datetime_format=datetime_format,
-                    errors=error_handling
-                )
-                
-                if operation_info['success']:
-                    st.session_state.dataset = result_df
-                    st.success(f"Successfully converted column to {target_dtype}")
-                    st.markdown(f"**Successful conversions:** {operation_info['successful_conversions']}")
-                    if operation_info['failed_conversions'] > 0:
-                        st.warning(f"**Failed conversions:** {operation_info['failed_conversions']} (set to null)")
-                    st.rerun()
-                else:
-                    st.error(f"Conversion failed: {operation_info['error']}")
-        
-        with col2:
-            if st.button("Preview Conversion"):
-                result_df, operation_info = transformer.convert_column_dtype(
-                    df=df.head(10),
-                    column=convert_column,
-                    target_dtype=target_dtype,
-                    datetime_format=datetime_format,
-                    errors=error_handling
-                )
-                if operation_info['success']:
-                    comparison_df = pd.DataFrame({
-                        'Original': df[convert_column].head(10),
-                        'Converted': result_df[convert_column]
-                    })
-                    st.dataframe(comparison_df, use_container_width=True)
-                else:
-                    st.error(f"Preview failed: {operation_info['error']}")
 
 st.divider()
 st.subheader("Current Dataset Status")
