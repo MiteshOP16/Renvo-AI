@@ -17,10 +17,9 @@ The core structure includes:
 - **Key Features**:
     - **Data Upload & Configuration**: Integrated into home page - supports CSV and Excel (.xlsx, .xls) with automatic column type detection and openpyxl for Excel support.
     - **Column Analysis**: Individual column analysis including missing data patterns, outlier detection, and quality assessment.
-    - **Cleaning Wizard**: Multiple cleaning methods (imputation, outlier handling, standardization) with survey weight support.
+    - **Cleaning Wizard**: Multiple cleaning methods (imputation, outlier handling, text operations) with impact assessments.
     - **AI Assistant**: Context-aware guidance for cleaning recommendations.
     - **Undo/Redo**: Full operation history.
-    - **Survey Weights**: Integrated support for survey design weights.
     - **Data Type Anomaly Detection**: Dedicated page for type mismatch detection, clear display of anomalous values, and flexible correction options.
     - **Duplicate Removal**: Complete row duplicate detection and removal with configurable options (check all columns or specific columns, keep first/last/none).
     - **Hypothesis Testing**: Comprehensive statistical testing with 15 test types, intelligent recommendations based on data characteristics, and detailed output with interpretations.
@@ -36,12 +35,16 @@ The core structure includes:
 - **Reporting**: Jinja2, ReportLab
 
 ## Recent Updates (Dec 2025)
-- **Data Transformation Feature (Dec 14, 2025)**: Added new Data Transformation page (positioned between Anomaly Detection and Column Analysis) with comprehensive data manipulation capabilities:
-    - **Merge/Split Columns**: Toggle between merge and split modes. Merge supports multiple columns with individual separators, missing value handling, and DateTime-aware merging (year, month, day, hour, etc.). Split supports regular separators and DateTime component extraction.
-    - **Expand JSON Data**: Automatic detection of JSON/dictionary columns, key extraction into new columns, array explosion into multiple rows, and reverse operation (columns to JSON with grouping support).
-    - **Data Type Conversion**: Support for Integer, Float, String, Boolean, DateTime, Date, Time, Categorical, List, and Dictionary types with validation and error handling.
-    - **Preview Functionality**: All operations include preview before applying changes.
-    - **Undo Support**: Integrated with existing backup/undo system.
+- **Navigation Restructure & Feature Cleanup (Dec 15, 2025)**:
+    - Reorganized navigation into logical sections: Data Cleaning (Anomaly Detection, Data Transformation, Column Analysis, Cleaning Wizard), Data Analysis (Hypothesis Testing, Data Balancer), Data Visualization (Visualization, Reports), AI (AI Assistant)
+    - Fixed schema configuration error on home page - column type selection now properly handles legacy/custom types without overwriting user selections
+    - Removed Data Type Conversion from Data Transformation page (now only Merge/Split and JSON expansion)
+    - Removed Survey Weights Configuration, Type Standardisation, and Remove Duplicates from Cleaning Wizard
+- **Data Transformation Feature (Dec 14, 2025)**: Added new Data Transformation page with:
+    - **Merge/Split Columns**: Toggle between merge and split modes with DateTime-aware operations
+    - **Expand JSON Data**: Automatic JSON detection, key extraction, array explosion, and reverse operations
+    - **Preview Functionality**: All operations include preview before applying
+    - **Undo Support**: Integrated with backup/undo system
 
 ## Recent Updates (Nov 2025)
 - **Data Balancer Fix and Enhancement (Nov 30, 2025)**: Fixed critical '_validate_data' error affecting all balancing methods by implementing proper NumPy array conversion pipeline with `_prepare_features` and `_prepare_target` methods. Added safe fit_resample wrapper that handles label encoding for categorical targets and properly reverses encoding after balancing. New split data flow added: users can now choose between "Use Whole Data" or "Use Split Data" with configurable stratified train/test split percentage. Test data is preserved unchanged and available for download at the bottom of the page. Proper validation blocks usage until data is cleaned.
