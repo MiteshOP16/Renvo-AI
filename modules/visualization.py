@@ -8,13 +8,33 @@ import matplotlib.pyplot as plt
 from typing import Dict, List, Any, Tuple
 import plotly.figure_factory as ff
 
-# Remove the placeholder - caching will be done at instance level
+# Design System Colors
+COLOR_PRIMARY = "#2563EB"  # Blue
+COLOR_SECONDARY = "#7C3AED"  # Purple
+COLOR_SUCCESS = "#10B981"  # Green
+COLOR_WARNING = "#F59E0B"  # Amber
+COLOR_ERROR = "#EF4444"  # Red
+COLOR_INFO = "#3B82F6"  # Light Blue
+COLOR_LIGHT = "#DBEAFE"  # Light Blue
+COLOR_NEUTRAL = "#6B7280"  # Gray
+
+# Color palette for multi-series charts
+COLOR_PALETTE = [
+    COLOR_PRIMARY,      # Blue
+    COLOR_SUCCESS,      # Green
+    COLOR_WARNING,      # Amber
+    COLOR_SECONDARY,    # Purple
+    COLOR_INFO,        # Light Blue
+    COLOR_ERROR,       # Red
+    "#EC4899",         # Pink
+    "#14B8A6",         # Teal
+]
 
 class DataVisualizer:
     """Comprehensive visualization module for data cleaning assistant"""
     
     def __init__(self):
-        self.color_palette = px.colors.qualitative.Set3
+        self.color_palette = COLOR_PALETTE
         self.plot_config = {
             'displayModeBar': True,
             'modeBarButtonsToAdd': ['drawline', 'drawopenpath', 'drawrect', 'eraseshape']
@@ -46,7 +66,7 @@ class DataVisualizer:
             z=missing_matrix.values.T,
             y=missing_matrix.columns,
             x=missing_matrix.index,
-            colorscale=[[0, 'lightblue'], [1, 'red']],
+            colorscale=[[0, COLOR_SUCCESS], [1, COLOR_ERROR]],
             showscale=True,
             colorbar=dict(title="Missing Values", tickvals=[0, 1], ticktext=["Present", "Missing"])
         ))
@@ -56,7 +76,10 @@ class DataVisualizer:
             xaxis_title="Row Index",
             yaxis_title="Columns",
             height=max(400, min(len(df_viz.columns) * 20, 800)),  # Cap height
-            xaxis=dict(showticklabels=False) if len(df_viz) > 1000 else {}
+            xaxis=dict(showticklabels=False) if len(df_viz) > 1000 else {},
+            font=dict(family="Arial, sans-serif", size=12),
+            plot_bgcolor="rgba(243, 244, 246, 1)",
+            paper_bgcolor="white"
         )
         
         return fig
@@ -83,8 +106,8 @@ class DataVisualizer:
             x=stats_df['column'],
             y=stats_df['missing_pct'],
             yaxis='y',
-            marker_color='red',
-            opacity=0.7
+            marker_color=COLOR_ERROR,
+            opacity=0.8
         ))
         
         # Unique percentage line
@@ -94,19 +117,22 @@ class DataVisualizer:
             y=stats_df['unique_pct'],
             yaxis='y2',
             mode='lines+markers',
-            line=dict(color='blue', width=2),
-            marker=dict(size=6)
+            line=dict(color=COLOR_PRIMARY, width=3),
+            marker=dict(size=8, color=COLOR_PRIMARY)
         ))
         
         fig.update_layout(
             title="Column Overview: Missing Values and Uniqueness",
             xaxis_title="Columns",
-            yaxis=dict(title="Missing Percentage", side="left", color="red"),
-            yaxis2=dict(title="Unique Percentage", side="right", overlaying="y", color="blue"),
+            yaxis=dict(title="Missing Percentage", side="left", color=COLOR_ERROR),
+            yaxis2=dict(title="Unique Percentage", side="right", overlaying="y", color=COLOR_PRIMARY),
             height=500,
             xaxis=dict(tickangle=45),
             hovermode='x unified',
-            legend=dict(x=0.01, y=0.99)
+            legend=dict(x=0.01, y=0.99),
+            font=dict(family="Arial, sans-serif", size=12),
+            plot_bgcolor="rgba(243, 244, 246, 1)",
+            paper_bgcolor="white"
         )
         
         return fig
@@ -138,31 +164,36 @@ class DataVisualizer:
             x=non_null_series,
             name="Distribution",
             nbinsx=min(50, int(len(non_null_series) / 10)),
-            marker_color='lightblue',
-            opacity=0.7
+            marker_color=COLOR_PRIMARY,
+            marker_line_width=1,
+            marker_line_color="white",
+            opacity=0.8
         ))
         
         # Add statistics lines
         mean_val = non_null_series.mean()
         median_val = non_null_series.median()
         
-        fig.add_vline(x=mean_val, line_dash="dash", line_color="red", 
-                     annotation_text=f"Mean: {mean_val:.2f}")
-        fig.add_vline(x=median_val, line_dash="dash", line_color="blue", 
-                     annotation_text=f"Median: {median_val:.2f}")
+        fig.add_vline(x=mean_val, line_dash="dash", line_color=COLOR_ERROR, line_width=2,
+                     annotation_text=f"Mean: {mean_val:.2f}", annotation_position="top right")
+        fig.add_vline(x=median_val, line_dash="dash", line_color=COLOR_SUCCESS, line_width=2,
+                     annotation_text=f"Median: {median_val:.2f}", annotation_position="top left")
         
         # Add quartiles
         q25 = non_null_series.quantile(0.25)
         q75 = non_null_series.quantile(0.75)
-        fig.add_vline(x=q25, line_dash="dot", line_color="green", opacity=0.5)
-        fig.add_vline(x=q75, line_dash="dot", line_color="green", opacity=0.5)
+        fig.add_vline(x=q25, line_dash="dot", line_color=COLOR_WARNING, line_width=1.5, opacity=0.7)
+        fig.add_vline(x=q75, line_dash="dot", line_color=COLOR_WARNING, line_width=1.5, opacity=0.7)
         
         fig.update_layout(
             title=f"{column_name} - Distribution",
             xaxis_title=column_name,
             yaxis_title="Frequency",
             height=400,
-            showlegend=False
+            showlegend=False,
+            font=dict(family="Arial, sans-serif", size=12),
+            plot_bgcolor="rgba(243, 244, 246, 1)",
+            paper_bgcolor="white"
         )
         
         return fig
@@ -180,9 +211,14 @@ class DataVisualizer:
             fig.update_layout(title=f"{column_name} - No Data")
             return fig
         
+        # Use color gradient for categorical data
+        colors = [COLOR_PALETTE[i % len(COLOR_PALETTE)] for i in range(len(value_counts))]
+        
         fig = go.Figure(data=[
             go.Bar(x=value_counts.index, y=value_counts.values,
-                   marker_color='lightcoral')
+                   marker_color=colors,
+                   marker_line_width=1,
+                   marker_line_color="white")
         ])
         
         fig.update_layout(
@@ -190,7 +226,10 @@ class DataVisualizer:
             xaxis_title="Categories",
             yaxis_title="Count",
             height=400,
-            xaxis=dict(tickangle=45)
+            xaxis=dict(tickangle=45),
+            font=dict(family="Arial, sans-serif", size=12),
+            plot_bgcolor="rgba(243, 244, 246, 1)",
+            paper_bgcolor="white"
         )
         
         return fig
@@ -222,7 +261,9 @@ class DataVisualizer:
             y=non_null_series,
             name="Data",
             boxpoints="outliers",
-            marker_color="lightblue"
+            marker_color=COLOR_PRIMARY,
+            line_color=COLOR_PRIMARY,
+            fillcolor=COLOR_LIGHT
         ))
         
         # Add outlier detection results if available
@@ -237,13 +278,16 @@ class DataVisualizer:
                         x=['Outliers'] * len(outlier_values),
                         mode='markers',
                         name='IQR Outliers',
-                        marker=dict(color='red', size=8, symbol='x')
+                        marker=dict(color=COLOR_ERROR, size=10, symbol='x', line=dict(width=2, color=COLOR_ERROR))
                     ))
         
         fig.update_layout(
             title=f"{column_name} - Outlier Detection",
             yaxis_title=column_name,
-            height=400
+            height=400,
+            font=dict(family="Arial, sans-serif", size=12),
+            plot_bgcolor="rgba(243, 244, 246, 1)",
+            paper_bgcolor="white"
         )
         
         return fig
@@ -258,16 +302,20 @@ class DataVisualizer:
             fig.add_trace(go.Histogram(
                 x=before_series.dropna(),
                 name="Before",
-                opacity=0.6,
-                marker_color='red',
+                opacity=0.7,
+                marker_color=COLOR_ERROR,
+                marker_line_width=1,
+                marker_line_color="white",
                 nbinsx=30
             ))
             
             fig.add_trace(go.Histogram(
                 x=after_series.dropna(),
                 name="After",
-                opacity=0.6,
-                marker_color='blue',
+                opacity=0.7,
+                marker_color=COLOR_SUCCESS,
+                marker_line_width=1,
+                marker_line_color="white",
                 nbinsx=30
             ))
             
@@ -292,16 +340,20 @@ class DataVisualizer:
                 x=all_categories,
                 y=before_aligned,
                 name="Before",
-                marker_color='red',
-                opacity=0.7
+                marker_color=COLOR_ERROR,
+                marker_line_width=1,
+                marker_line_color="white",
+                opacity=0.8
             ))
             
             fig.add_trace(go.Bar(
                 x=all_categories,
                 y=after_aligned,
                 name="After",
-                marker_color='blue',
-                opacity=0.7
+                marker_color=COLOR_SUCCESS,
+                marker_line_width=1,
+                marker_line_color="white",
+                opacity=0.8
             ))
             
             fig.update_layout(
@@ -312,7 +364,13 @@ class DataVisualizer:
                 xaxis=dict(tickangle=45)
             )
         
-        fig.update_layout(height=400, legend=dict(x=0.01, y=0.99))
+        fig.update_layout(
+            height=400, 
+            legend=dict(x=0.01, y=0.99),
+            font=dict(family="Arial, sans-serif", size=12),
+            plot_bgcolor="rgba(243, 244, 246, 1)",
+            paper_bgcolor="white"
+        )
         return fig
     
     def plot_correlation_matrix(self, df: pd.DataFrame, max_cols: int = 20) -> go.Figure:
@@ -343,21 +401,28 @@ class DataVisualizer:
             corr_matrix = numeric_df.corr(method='pearson')
             self._corr_cache[cache_key] = corr_matrix
         
-        # Create heatmap
+        # Create heatmap with professional colors
         fig = go.Figure(data=go.Heatmap(
             z=corr_matrix.values,
             x=corr_matrix.columns,
             y=corr_matrix.columns,
-            colorscale='RdBu',
+            colorscale=[
+                [0, COLOR_ERROR],      # Red for negative correlation
+                [0.5, "white"],         # White for no correlation
+                [1, COLOR_SUCCESS]      # Green for positive correlation
+            ],
             zmid=0,
-            colorbar=dict(title="Correlation")
+            colorbar=dict(title="Correlation", tickvals=[-1, 0, 1], ticktext=["-1.0", "0.0", "1.0"])
         ))
         
         fig.update_layout(
             title="Correlation Matrix (Numeric Columns)",
             height=600,
             xaxis=dict(tickangle=45),
-            yaxis=dict(tickangle=0)
+            yaxis=dict(tickangle=0),
+            font=dict(family="Arial, sans-serif", size=12),
+            plot_bgcolor="white",
+            paper_bgcolor="white"
         )
         
         return fig
@@ -384,12 +449,15 @@ class DataVisualizer:
                 columns.append(col)
         
         if quality_scores:
+            # Use color gradient based on quality scores
+            colors = [
+                COLOR_SUCCESS if score >= 80 else COLOR_WARNING if score >= 60 else COLOR_ERROR
+                for score in quality_scores
+            ]
+            
             quality_fig = go.Figure(data=[
-                go.Bar(x=columns, y=quality_scores, 
-                       marker_color=[
-                           'green' if score >= 80 else 'orange' if score >= 60 else 'red' 
-                           for score in quality_scores
-                       ])
+                go.Bar(x=columns, y=quality_scores, marker_color=colors,
+                       marker_line_width=1, marker_line_color="white")
             ])
             
             quality_fig.update_layout(
@@ -397,7 +465,10 @@ class DataVisualizer:
                 xaxis_title="Columns",
                 yaxis_title="Quality Score",
                 height=400,
-                xaxis=dict(tickangle=45)
+                xaxis=dict(tickangle=45),
+                font=dict(family="Arial, sans-serif", size=12),
+                plot_bgcolor="rgba(243, 244, 246, 1)",
+                paper_bgcolor="white"
             )
             
             figures.append(quality_fig)

@@ -4,7 +4,7 @@ import numpy as np
 import plotly.graph_objects as go
 import plotly.express as px
 from modules.utils import initialize_session_state
-from modules.visualization import DataVisualizer
+from modules.visualization import DataVisualizer, COLOR_PRIMARY, COLOR_SUCCESS, COLOR_ERROR, COLOR_WARNING, COLOR_SECONDARY, COLOR_INFO, COLOR_PALETTE
 import io
 import base64
 
@@ -100,18 +100,23 @@ if selected_columns:
                     if pd.api.types.is_numeric_dtype(df[col]):
                         # For numeric columns, show distribution
                         value_counts = df[col].value_counts().head(20).sort_index()
+                        colors = [COLOR_PALETTE[i % len(COLOR_PALETTE)] for i in range(len(value_counts))]
                         fig = px.bar(x=value_counts.index, y=value_counts.values,
                                    labels={'x': col, 'y': 'Count'}, title=chart_title)
+                        fig.update_traces(marker_color=colors)
                     else:
                         # For categorical columns
                         value_counts = df[col].value_counts().head(20)
+                        colors = [COLOR_PALETTE[i % len(COLOR_PALETTE)] for i in range(len(value_counts))]
                         fig = px.bar(x=value_counts.index, y=value_counts.values,
                                    labels={'x': col, 'y': 'Count'}, title=chart_title)
+                        fig.update_traces(marker_color=colors)
                         fig.update_xaxes(tickangle=-45)
                 elif len(selected_columns) == 2:
                     x_col, y_col = selected_columns[0], selected_columns[1]
                     if pd.api.types.is_numeric_dtype(df[y_col]):
                         fig = px.bar(df, x=x_col, y=y_col, title=chart_title)
+                        fig.update_traces(marker_color=COLOR_PRIMARY)
                     else:
                         error_message = "For 2-column bar charts, the second column should be numeric."
                 else:
@@ -121,12 +126,13 @@ if selected_columns:
             elif viz_type == 'line':
                 if len(selected_columns) >= 1:
                     fig = go.Figure()
-                    for col in selected_columns:
+                    for idx, col in enumerate(selected_columns):
                         if pd.api.types.is_numeric_dtype(df[col]):
                             fig.add_trace(go.Scatter(
                                 y=df[col].dropna(),
                                 mode='lines',
-                                name=col
+                                name=col,
+                                line=dict(color=COLOR_PALETTE[idx % len(COLOR_PALETTE)], width=3)
                             ))
                     fig.update_layout(title=chart_title, xaxis_title="Index", yaxis_title="Value")
                 else:
@@ -150,12 +156,13 @@ if selected_columns:
             # Box Plot
             elif viz_type == 'box':
                 fig = go.Figure()
-                for col in selected_columns:
+                for idx, col in enumerate(selected_columns):
                     if pd.api.types.is_numeric_dtype(df[col]):
                         fig.add_trace(go.Box(
                             y=df[col].dropna(),
                             name=col,
-                            boxmean='sd'
+                            boxmean='sd',
+                            marker_color=COLOR_PALETTE[idx % len(COLOR_PALETTE)]
                         ))
                 if fig.data:
                     fig.update_layout(title=chart_title, yaxis_title="Value", showlegend=show_legend)
@@ -165,13 +172,14 @@ if selected_columns:
             # Violin Plot
             elif viz_type == 'violin':
                 fig = go.Figure()
-                for col in selected_columns:
+                for idx, col in enumerate(selected_columns):
                     if pd.api.types.is_numeric_dtype(df[col]):
                         fig.add_trace(go.Violin(
                             y=df[col].dropna(),
                             name=col,
                             box_visible=True,
-                            meanline_visible=True
+                            meanline_visible=True,
+                            fillcolor=COLOR_PALETTE[idx % len(COLOR_PALETTE)]
                         ))
                 if fig.data:
                     fig.update_layout(title=chart_title, yaxis_title="Value", showlegend=show_legend)
@@ -181,12 +189,13 @@ if selected_columns:
             # Histogram
             elif viz_type == 'histogram':
                 fig = go.Figure()
-                for col in selected_columns:
+                for idx, col in enumerate(selected_columns):
                     if pd.api.types.is_numeric_dtype(df[col]):
                         fig.add_trace(go.Histogram(
                             x=df[col].dropna(),
                             name=col,
-                            opacity=0.7
+                            opacity=0.7,
+                            marker_color=COLOR_PALETTE[idx % len(COLOR_PALETTE)]
                         ))
                 if fig.data:
                     fig.update_layout(title=chart_title, barmode='overlay', showlegend=show_legend)
@@ -197,7 +206,6 @@ if selected_columns:
             elif viz_type == 'kde':
                 from scipy import stats
                 fig = go.Figure()
-                colors = ['#636efa', '#EF553B', '#00cc96', '#ab63fa', '#FFA15A']
                 for idx, col in enumerate(selected_columns):
                     if pd.api.types.is_numeric_dtype(df[col]):
                         data = df[col].dropna()
@@ -218,7 +226,7 @@ if selected_columns:
                                 mode='lines',
                                 fill='tozeroy',
                                 opacity=0.6,
-                                line=dict(color=colors[idx % len(colors)], width=2)
+                                line=dict(color=COLOR_PALETTE[idx % len(COLOR_PALETTE)], width=2)
                             ))
                 if fig.data:
                     fig.update_layout(
@@ -257,7 +265,7 @@ if selected_columns:
                                 mode='markers',
                                 name='Sample Data',
                                 marker=dict(
-                                    color='#19d3f3',
+                                    color=COLOR_PRIMARY,
                                     size=6,
                                     opacity=0.7,
                                     line=dict(width=0.5, color='DarkSlateGrey')
@@ -272,7 +280,7 @@ if selected_columns:
                                 y=y_line,
                                 mode='lines',
                                 name='Best Fit Line',
-                                line=dict(color='#636efa', width=2)
+                                line=dict(color=COLOR_SUCCESS, width=2)
                             ))
                             
                             # Add 45-degree line for perfect normal distribution
@@ -281,7 +289,7 @@ if selected_columns:
                                 y=x_line,
                                 mode='lines',
                                 name='Perfect Normal',
-                                line=dict(color='red', width=1, dash='dash'),
+                                line=dict(color=COLOR_ERROR, width=1, dash='dash'),
                                 opacity=0.5
                             ))
                             
@@ -317,11 +325,13 @@ if selected_columns:
                 if len(selected_columns) == 1:
                     col = selected_columns[0]
                     value_counts = df[col].value_counts().head(15)
+                    colors = [COLOR_PALETTE[i % len(COLOR_PALETTE)] for i in range(len(value_counts))]
                     fig = go.Figure(data=[go.Pie(
                         labels=value_counts.index,
                         values=value_counts.values,
                         textinfo='label+percent',
-                        hole=0.3
+                        hole=0.3,
+                        marker=dict(colors=colors)
                     )])
                     fig.update_layout(title=chart_title)
                 else:
