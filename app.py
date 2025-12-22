@@ -8,7 +8,11 @@ import traceback
 def main():
     from modules.utils import initialize_session_state, detect_column_types, create_backup
     from modules.data_analyzer import ColumnAnalyzer
+    from modules.design_system import apply_global_styles
     import io
+    
+    # Apply global styling
+    apply_global_styles()
     
     initialize_session_state()
     st.title("Renvo AI - Intelligent Data Cleaning Assistant")
