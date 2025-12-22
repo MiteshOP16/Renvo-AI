@@ -96,6 +96,10 @@ This section helps you detect and fix data quality issues:
 df = st.session_state.dataset
 column_types = st.session_state.column_types
 
+# Initialize session state for full scan
+if 'full_scan_results' not in st.session_state:
+    st.session_state.full_scan_results = None
+
 # Tabs for different functionalities
 tab1, tab2 = st.tabs(["🔍 Type Anomalies", "🗑️ Duplicate Removal"])
 
@@ -103,10 +107,90 @@ tab1, tab2 = st.tabs(["🔍 Type Anomalies", "🗑️ Duplicate Removal"])
 with tab1:
     st.divider()
     
+    # ========== SECTION 1: FULL DATASET SCAN ==========
+    st.subheader("1. Full Dataset Scan - All Columns")
+    st.markdown("Scan all columns at once to get a complete overview of data type issues across your entire dataset.")
+    
+    col_scan_btn, col_refresh_btn = st.columns([2, 1])
+    
+    with col_scan_btn:
+        if st.button("🔍 Scan All Columns for Anomalies", type="primary", use_container_width=True):
+            with st.spinner("Scanning all columns for anomalies..."):
+                detector = st.session_state.anomaly_detector
+                all_anomalies = detector.detect_all_anomalies(df, column_types)
+                st.session_state.full_scan_results = all_anomalies
+                st.session_state.full_scan_timestamp = datetime.now().isoformat()
+    
+    with col_refresh_btn:
+        if st.button("🔄 Refresh Results", use_container_width=True):
+            if st.session_state.full_scan_results is not None:
+                with st.spinner("Refreshing scan..."):
+                    detector = st.session_state.anomaly_detector
+                    all_anomalies = detector.detect_all_anomalies(df, column_types)
+                    st.session_state.full_scan_results = all_anomalies
+                    st.session_state.full_scan_timestamp = datetime.now().isoformat()
+                    st.rerun()
+    
+    # Display full scan results if available
+    if st.session_state.full_scan_results is not None:
+        all_anomalies = st.session_state.full_scan_results
+        
+        if not all_anomalies:
+            st.success("✅ No anomalies detected in any column!")
+            st.info("Your dataset is clean. All values match their expected data types.")
+        else:
+            st.warning(f"⚠️ Found anomalies in **{len(all_anomalies)} column(s)**")
+            
+            # Create summary table
+            summary_data = []
+            total_anomalies = 0
+            for col, data in all_anomalies.items():
+                summary_data.append({
+                    'Column': col,
+                    'Expected Type': data['expected_type'],
+                    'Anomaly Count': data['anomaly_count'],
+                    'Percentage': f"{data['anomaly_percentage']:.2f}%",
+                    'Total Values': data['total_values']
+                })
+                total_anomalies += data['anomaly_count']
+            
+            summary_df = pd.DataFrame(summary_data)
+            
+            # Display metrics
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                st.metric("Columns with Anomalies", len(all_anomalies))
+            with col2:
+                st.metric("Total Anomalies Found", total_anomalies)
+            with col3:
+                if len(df) > 0:
+                    total_cells = len(df) * len(df.columns)
+                    anomaly_percentage = (total_anomalies / total_cells) * 100
+                    st.metric("Dataset Anomaly Rate", f"{anomaly_percentage:.2f}%")
+            
+            st.divider()
+            st.subheader("Anomaly Summary by Column")
+            st.dataframe(summary_df.sort_values('Anomaly Count', ascending=False), use_container_width=True)
+            
+            st.download_button(
+                label="📥 Download Full Anomaly Report",
+                data=summary_df.to_csv(index=False),
+                file_name=f"anomaly_summary_{pd.Timestamp.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                mime="text/csv"
+            )
+            
+            st.info("💡 **Next Step**: Select a column below to view detailed anomalies and fix them.")
+    
+    st.divider()
+    
+    # ========== SECTION 2: INDIVIDUAL COLUMN ANALYSIS ==========
+    st.subheader("2. Individual Column Analysis")
+    st.markdown("Select a specific column to review and fix anomalies in detail.")
+    
     col1, col2 = st.columns([2, 1])
     
     with col1:
-        st.subheader("1. Select Column to Check")
+        st.subheader("Select Column")
         
         selected_column = st.selectbox(
             "Choose a column to analyze for anomalies",
@@ -115,7 +199,7 @@ with tab1:
         )
     
     with col2:
-        st.subheader("Column Information")
+        st.subheader("Column Info")
         if selected_column:
             expected_type = column_types.get(selected_column, 'unknown')
             st.metric("Expected Type", expected_type.title())
@@ -129,7 +213,7 @@ with tab1:
         
         col_scan, col_refresh = st.columns([3, 1])
         with col_scan:
-            st.subheader("2. Scan for Anomalies")
+            st.subheader("Scan for Anomalies")
         with col_refresh:
             if st.button("🔄 Re-scan Column", use_container_width=True):
                 if selected_column in st.session_state.anomaly_results:
@@ -152,7 +236,7 @@ with tab1:
             
             st.divider()
             
-            st.subheader("3. Review Anomalies")
+            st.subheader("Review Anomalies")
             
             anomalies_df = pd.DataFrame(anomaly_data['anomalies'])
             
@@ -175,7 +259,7 @@ with tab1:
             
             st.divider()
             
-            st.subheader("4. Fix Anomalies")
+            st.subheader("Fix Anomalies")
             
             fix_method = st.radio(
                 "Choose how to handle these anomalies:",
@@ -313,39 +397,6 @@ with tab1:
                     else:
                         st.success(f"✅ Replaced {summary['replacements_count']} anomalies!")
                     st.rerun()
-    
-    st.divider()
-    
-    with st.expander("📊 Scan All Columns for Anomalies", expanded=False):
-        st.markdown("Scan all columns at once to get a complete overview of data type issues.")
-        
-        if st.button("🔍 Scan All Columns", use_container_width=True):
-            with st.spinner("Scanning all columns for anomalies..."):
-                all_anomalies = detector.detect_all_anomalies(df, column_types)
-                
-                if not all_anomalies:
-                    st.success("✅ No anomalies detected in any column!")
-                else:
-                    st.warning(f"⚠️ Found anomalies in {len(all_anomalies)} column(s)")
-                    
-                    summary_data = []
-                    for col, data in all_anomalies.items():
-                        summary_data.append({
-                            'Column': col,
-                            'Expected Type': data['expected_type'],
-                            'Anomaly Count': data['anomaly_count'],
-                            'Percentage': f"{data['anomaly_percentage']:.2f}%"
-                        })
-                    
-                    summary_df = pd.DataFrame(summary_data)
-                    st.dataframe(summary_df, use_container_width=True)
-                    
-                    st.download_button(
-                        label="📥 Download Full Anomaly Report",
-                        data=summary_df.to_csv(index=False),
-                        file_name="all_anomalies_summary.csv",
-                        mime="text/csv"
-                    )
 
 # ========== TAB 2: DUPLICATE REMOVAL ==========
 with tab2:
