@@ -83,9 +83,9 @@ class Colors:
 class Typography:
     """Typography definitions for consistent text styling"""
     
-    # Font families
-    FONT_FAMILY_BASE = "sans-serif"
-    FONT_FAMILY_MONO = "monospace"
+    # Font families - Attractive modern font stack
+    FONT_FAMILY_BASE = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif"
+    FONT_FAMILY_MONO = "'Monaco', 'Menlo', 'Ubuntu Mono', monospace"
     
     # Font sizes (in pixels)
     SIZE_XS = 12

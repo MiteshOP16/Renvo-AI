@@ -77,7 +77,7 @@ class DataVisualizer:
             yaxis_title="Columns",
             height=max(400, min(len(df_viz.columns) * 20, 800)),  # Cap height
             xaxis=dict(showticklabels=False) if len(df_viz) > 1000 else {},
-            font=dict(family="Arial, sans-serif", size=12),
+            font=dict(family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif", size=12),
             plot_bgcolor="rgba(243, 244, 246, 1)",
             paper_bgcolor="white"
         )
@@ -130,7 +130,7 @@ class DataVisualizer:
             xaxis=dict(tickangle=45),
             hovermode='x unified',
             legend=dict(x=0.01, y=0.99),
-            font=dict(family="Arial, sans-serif", size=12),
+            font=dict(family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif", size=12),
             plot_bgcolor="rgba(243, 244, 246, 1)",
             paper_bgcolor="white"
         )
@@ -191,7 +191,7 @@ class DataVisualizer:
             yaxis_title="Frequency",
             height=400,
             showlegend=False,
-            font=dict(family="Arial, sans-serif", size=12),
+            font=dict(family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif", size=12),
             plot_bgcolor="rgba(243, 244, 246, 1)",
             paper_bgcolor="white"
         )
@@ -227,7 +227,7 @@ class DataVisualizer:
             yaxis_title="Count",
             height=400,
             xaxis=dict(tickangle=45),
-            font=dict(family="Arial, sans-serif", size=12),
+            font=dict(family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif", size=12),
             plot_bgcolor="rgba(243, 244, 246, 1)",
             paper_bgcolor="white"
         )
@@ -285,7 +285,7 @@ class DataVisualizer:
             title=f"{column_name} - Outlier Detection",
             yaxis_title=column_name,
             height=400,
-            font=dict(family="Arial, sans-serif", size=12),
+            font=dict(family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif", size=12),
             plot_bgcolor="rgba(243, 244, 246, 1)",
             paper_bgcolor="white"
         )
@@ -367,7 +367,7 @@ class DataVisualizer:
         fig.update_layout(
             height=400, 
             legend=dict(x=0.01, y=0.99),
-            font=dict(family="Arial, sans-serif", size=12),
+            font=dict(family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif", size=12),
             plot_bgcolor="rgba(243, 244, 246, 1)",
             paper_bgcolor="white"
         )
@@ -420,7 +420,7 @@ class DataVisualizer:
             height=600,
             xaxis=dict(tickangle=45),
             yaxis=dict(tickangle=0),
-            font=dict(family="Arial, sans-serif", size=12),
+            font=dict(family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif", size=12),
             plot_bgcolor="white",
             paper_bgcolor="white"
         )
@@ -466,7 +466,7 @@ class DataVisualizer:
                 yaxis_title="Quality Score",
                 height=400,
                 xaxis=dict(tickangle=45),
-                font=dict(family="Arial, sans-serif", size=12),
+                font=dict(family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif", size=12),
                 plot_bgcolor="rgba(243, 244, 246, 1)",
                 paper_bgcolor="white"
             )
