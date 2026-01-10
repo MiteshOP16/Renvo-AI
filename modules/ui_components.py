@@ -82,18 +82,21 @@ def styled_metric(
     columns: int = 1
 ):
     """
-    Create a styled metric card
-    
-    Args:
-        label: Metric label
-        value: Metric value
-        delta: Change value (optional)
-        help_text: Help tooltip
-        columns: Number of columns to span
-    
-    Returns:
-        None (displays metric)
+    Create a styled metric card with responsive font size
     """
+    st.markdown(
+        """
+        <style>
+        [data-testid="stMetricValue"] {
+            font-size: clamp(1rem, 5vw, 2.5rem);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
     st.metric(label, value, delta=delta, help=help_text)
 
 
