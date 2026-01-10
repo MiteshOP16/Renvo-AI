@@ -97,6 +97,21 @@ def main():
     if st.session_state.dataset is not None:
         df = st.session_state.dataset
         
+        # Inject CSS for responsive metric values
+        st.markdown(
+            """
+            <style>
+            [data-testid="stMetricValue"] {
+                font-size: clamp(1rem, 4vw, 2.2rem) !important;
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
+        
         st.divider()
         st.subheader("📋 Dataset Overview")
         
