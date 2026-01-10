@@ -28,18 +28,6 @@ visualizer = DataVisualizer()
 analyzer = st.session_state.data_analyzer
 
 
-# Check for inter-column violations before cleaning
-if 'inter_column_violations' not in st.session_state:
-    with st.spinner("🔍 Checking for inter-column rule violations..."):
-        violations = analyzer.detect_inter_column_violations(df)
-        st.session_state.inter_column_violations = violations
-
-# Display violations if any
-violations = st.session_state.get('inter_column_violations', {})
-if violations.get('total_violations', 0) > 0:
-    severity_emoji = {'low': '🟢', 'moderate': '🟡', 'high': '🔴'}[violations['severity']]
-    st.warning(f"{severity_emoji} **{violations['total_violations']} inter-column violations detected** - Address these during cleaning for data consistency")
-
 # Control panel
 control_cols = st.columns([2, 1, 1, 1])
 

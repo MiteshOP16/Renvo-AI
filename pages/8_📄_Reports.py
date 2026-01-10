@@ -43,12 +43,17 @@ with export_cols[0]:
     st.markdown("Export your cleaned dataset in various formats")
 
 with export_cols[1]:
-    csv_data = df.to_csv(index=False)
+    # Convert dataframe to Excel
+    buffer = io.BytesIO()
+    with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Cleaned Data')
+    excel_data = buffer.getvalue()
+    
     st.download_button(
-        label="📊 Download Cleaned CSV",
-        data=csv_data,
-        file_name=f"cleaned_dataset_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-        mime="text/csv",
+        label="📊 Download Cleaned Excel",
+        data=excel_data,
+        file_name=f"cleaned_dataset_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         use_container_width=True
     )
 
