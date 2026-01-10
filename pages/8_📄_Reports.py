@@ -59,11 +59,11 @@ with export_cols[1]:
 
 with export_cols[2]:
     if original_df is not None:
-        csv_original = original_df.to_csv(index=False)
+        csv_cleaned = df.to_csv(index=False)
         st.download_button(
-            label="📄 Download Original CSV",
-            data=csv_original,
-            file_name=f"original_dataset_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+            label="📊 Download Cleaned CSV",
+            data=csv_cleaned,
+            file_name=f"cleaned_dataset_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
             mime="text/csv",
             use_container_width=True
         )
