@@ -1,0 +1,90 @@
+Add a new Data Balancer section immediately after the Hypothesis Testing section in the platform workflow.
+
+Core Functionality
+
+Allow users to select feature columns and target columns for applying balancing techniques.
+
+After selecting columns, display all balancing methods from the PDF:
+
+Oversampling Techniques
+
+Random Oversampling
+
+SMOTE (Synthetic Minority Oversampling Technique)
+
+Undersampling Techniques
+
+Random Undersampling
+
+Tomek Links
+
+NearMiss-1
+
+NearMiss-2
+
+NearMiss-3
+
+Edited Nearest Neighbors (ENN)
+
+Condensed Nearest Neighbors (CNN)
+
+One-Sided Selection (OSS)
+
+Cluster Centroids
+
+Neighborhood Cleaning Rule (NCR)
+
+Hybrid Techniques
+
+SMOTE + Tomek Links
+
+SMOTE + ENN
+
+Advanced Techniques
+
+GAN-based Oversampling
+
+Variational Autoencoder Oversampling
+
+Cost-Sensitive Learning
+
+On clicking Apply, show detailed before vs. after class distribution of the selected columns.
+
+Allow users to download only the balanced columns, but show this message before download:
+
+“Balanced data will have a different number of rows than your cleaned dataset.
+Use balanced columns directly for model training.”
+
+Validation & Restrictions
+
+Do NOT allow users to use this feature if the data is uncleaned.
+If missing values, invalid datatypes, encoding issues, duplicates, or other uncleaned conditions exist, block the process and throw an appropriate error.
+
+Edge Case Handling
+
+The system must handle all edge cases with clear, friendly error messages, including:
+
+Unsupported or incompatible column types
+
+Class ratio too small for selected technique
+
+Target column is not categorical
+
+Selected target contains only one class
+
+Dataset too small for technique
+
+Invalid column selection
+
+Issues during balancing or transformations
+
+Download generation errors
+
+Flow & Compatibility
+
+Users must still be able to request subsets of the dataset for ML modeling within this section.
+
+Do not modify or interrupt any existing files or sections in the workflow.
+Only insert and integrate this new Data Balancer module into the current flow.
+
+Implement the module exactly as described above.

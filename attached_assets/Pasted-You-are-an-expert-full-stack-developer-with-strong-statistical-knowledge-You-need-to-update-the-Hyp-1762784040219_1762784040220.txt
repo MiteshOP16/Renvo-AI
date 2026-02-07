@@ -1,0 +1,97 @@
+You are an expert full-stack developer with strong statistical knowledge. You need to update the Hypothesis Testing page in an existing data cleaning web application.
+
+Current Functionality
+
+User selects dataset
+
+User selects columns
+
+User selects a statistical test
+
+Application returns test results
+
+New Required Functionality
+
+We are adding an AI-assisted test recommendation workflow.
+
+Workflow Changes
+
+User writes a plain language prompt describing their hypothesis (e.g., "I want to compare average income between male and female respondents").
+
+The integrated AI assistant (Groq API) analyzes the prompt and returns:
+
+Recommended statistical tests
+
+Whether test is parametric or non-parametric
+
+Short, beginner-friendly explanation (1–3 sentences max).
+
+After AI suggestion, the UI must show:
+
+Dropdown for Parametric or Non-parametric
+
+Test list based on the document below
+(Include every test below, categorized properly)
+
+Include These Tests Exactly
+PARAMETRIC TESTS
+
+Means: One-sample t-test, Independent t-test, Paired t-test, One-Way ANOVA, Two-Way ANOVA
+
+Variances: F-test, Bartlett’s Test, Levene’s Test
+
+Proportions: One-sample Z-test, Two-proportion Z-test, Chi-Square Test for Homogeneity
+
+Correlation: Pearson Correlation Test, Partial Correlation
+
+Goodness-of-Fit / Normality: Chi-Square GOF, Shapiro–Wilk, Kolmogorov–Smirnov, Anderson–Darling
+
+NON-PARAMETRIC TESTS
+
+Medians / ranks: Sign Test, Mann–Whitney U, Wilcoxon Signed-Rank, Kruskal-Wallis
+
+Categorical: Chi-Square Independence, Fisher’s Exact, Cochran-Armitage Trend, McNemar
+
+Correlation: Spearman, Kendall’s Tau
+
+GOF: KS Two-Sample, Anderson–Darling, Cramér–von Mises
+
+SPECIALIZED (optional advanced dropdown)
+
+Box’s M Test, MANOVA, Log-Rank Test, Jonckheere–Terpstra, Runs Test
+
+App Behavior Requirements
+
+If selected data is not valid for a test (e.g., non-numeric where numeric is required), show a clear friendly message, not an error trace.
+
+AI suggestions must be simple and educational (not technical jargon).
+
+Final statistical result output format remains the same, only improve UI styling.
+
+Test with small datasets and ensure:
+
+No infinite loading
+
+No UI freezing
+
+Proper error handling
+
+Output Expected
+
+Generate:
+
+Updated frontend UI code
+
+Backend handler logic for:
+
+AI recommendation call
+
+Test classifications
+
+Validation checks before running any test
+
+Clean and maintainable code architecture
+
+Clear comments explaining functionality
+
+Use modern UI components (e.g., Tailwind/Material UI depending on framework).

@@ -1,0 +1,99 @@
+You are working on a Streamlit + Python project called “Intelligent Data Cleaning Assistant.”
+The Phase 1 of the project is already fully working.
+Your task is to implement Phase 2 features exactly as described below, ensuring they integrate seamlessly with all existing functionality.
+Do not modify, break, or remove any Phase 1 features and maintain integrity, flow of the app as per tasks.
+
+📌 Phase 1 (Existing) — Keep As-Is
+
+Home Page – Quick guide explaining how to use the website.
+
+Upload Data – User uploads dataset.
+
+Schema Fetching Section – Detects column schema; allows manual update or schema JSON upload.
+
+Column-wise Analysis – For each column:
+
+Key points
+
+Missing values
+
+Outliers
+
+Distributions
+
+Cleaning recommendations
+
+Cleaning Wizard – Multiple cleaning techniques with before/after graphs.
+
+AI Assistant – FAQs on cleaning, chat saving for better responses.
+
+Report Generation – Generates a PDF report based on applied steps.
+
+Undo/Redo Cleaning Logs – Tracks all cleaning actions.
+
+⚠️ Do not touch any of this. Only add new capabilities.
+
+🚀 Phase 2 — New Features to Add
+
+Visualization Section (insert before AI Assistant in the page order):
+
+Let users select multiple columns.
+
+Let them choose graph type (bar, line, scatter, etc.).
+
+Graphs must reflect the cleaned data in real time.
+
+Generated graphs should be static images that can be added to the PDF report.
+
+Data Export Options
+
+Allow users to download the cleaned dataset in CSV format.
+
+Keep PDF export as-is.
+
+Enhanced Cleaning Features (inside Cleaning Wizard)
+
+Improve missing value handling and outlier handling.
+
+Add data validation and formatting checks before final export.
+
+Anomaly Detection Section
+
+Detect anomalies per column.
+
+Show all anomalies, not just samples.
+
+Allow anomalies to be included in the PDF report.
+
+Report Enhancements
+
+Add a preview of the cleaned dataset inside the report section before export.
+
+Ensure the report includes:
+
+All applied cleaning steps
+
+Detected anomalies
+
+Visualizations as static images.
+
+⚠️ Key Instructions
+
+❌ Do not rewrite or remove existing Phase 1 functionality.
+
+✅ Only add Phase 2 features.
+
+✅ Ensure all new features work smoothly with existing session state, cleaning history, and reporting.
+
+🧪 Test the entire flow after implementation:
+Upload → Analyze → Clean → Visualize → Detect Anomalies → Export CSV & PDF.
+Nothing should break.
+
+✅ Final Deliverable
+
+A fully working Phase 2 implementation that is fully integrated with the existing Phase 1 app.
+All new features function as described, and the overall workflow remains smooth and connected.
+
+💬 Final instruction to Replit:
+
+Implement Phase 2 features as described above, ensuring everything integrates cleanly with the existing application, without modifying Phase 1.

@@ -1,0 +1,66 @@
+✅ Phase 1 (Keep as-is, do NOT modify):
+	1.	Home Page – Quick guide explaining how to use the website.
+	2.	Upload Data – User uploads dataset.
+	3.	Schema Fetching Section – Detects column schema; option to update manually or upload schema JSON.
+	4.	Column-wise Analysis – For each column, user sees:
+	•	Key points
+	•	Missing values
+	•	Outliers
+	•	Distributions
+	•	Cleaning recommendations
+	5.	Cleaning Wizard – Provides multiple cleaning techniques with before/after graphs.
+	6.	AI Assistant – FAQs on cleaning; save chats for better responses.
+	7.	Report Generation – Generates a PDF report based on applied steps.
+	8.	Undo/Redo Cleaning Logs – Tracks all cleaning actions.
+
+⸻
+
+🔹 Phase 2 (New Features to Add):
+
+1. Visualization Section (place it before AI Assistant):
+	•	Let user select multiple columns.
+	•	Let user choose graph type (bar, line, scatter, etc.).
+	•	All graphs must update in real time to reflect cleaned data.
+	•	Graphs must be static images and can be pushed into the PDF report.
+
+2. Data Export Options:
+	•	Allow users to download the cleaned dataset in CSV format.
+	•	Keep report export in PDF only.
+
+3. Enhanced Cleaning Features (inside Cleaning Wizard):
+	•	Improve handling of:
+	•	Missing values
+	•	Outliers
+	•	Add data validation and formatting checks before final export.
+
+4. Anomaly Detection Section:
+	•	Detect anomalies in each column.
+	•	Show all detected anomalies (not random samples).
+	•	Allow anomalies to be added into the PDF report.
+
+5. Final Report Enhancements:
+	•	Add a preview of the cleaned dataset inside the report section (before export).
+	•	Ensure report includes:
+	•	All applied cleaning steps
+	•	Detected anomalies
+	•	Visualizations (as static images)
+
+⸻
+
+🔹 Tech Requirements:
+	•	Continue using Streamlit + Python.
+	•	You may use other libraries where needed:
+	•	Plotly, Altair, or Matplotlib → for visualizations
+	•	Scikit-learn, PyOD, or Pandas-based methods → for anomaly detection
+	•	Pandas, NumPy, PyArrow → for cleaning improvements
+
+⸻
+
+⚠ Rules:
+	•	Do NOT modify or remove any Phase 1 functionality.
+	•	Only add Phase 2 features.
+	•	Ensure Phase 2 integrates seamlessly with existing workflow.
+
+⸻
+
+👉 This is the final instruction. Generate the Streamlit + Python code implementing Phase 2 as described.
