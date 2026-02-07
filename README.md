@@ -121,7 +121,11 @@ The application will open in your browser at `http://localhost:8501`
 
 ### Step 1: Upload Your Data
 - Navigate to **Data Upload** page
-- Upload CSV or Excel file (supports .csv, .xlsx, .xls)
+- **Option A - File Upload**: Upload CSV or Excel file (supports .csv, .xlsx, .xls)
+- **Option B - MySQL Database**: Connect to a MySQL database and import tables directly
+  - Enter host, port, database name, username, and password
+  - Select a table to import or write a custom SQL query
+  - Preview data before importing
 - System automatically detects column types
 
 ### Step 2: Review & Configure

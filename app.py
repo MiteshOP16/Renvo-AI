@@ -92,6 +92,54 @@ def main():
         except Exception as e:
             st.error(f"❌ Error loading file: {str(e)}")
             st.stop()
+    # Create tabs for different import methods
+    import_tab1, import_tab2, import_tab3 = st.tabs(["📁 File Upload", "🔌 MySQL Database", "🟢 Supabase"])
+    
+    with import_tab1:
+        st.markdown("Upload a CSV or Excel file to get started:")
+        uploaded_file = st.file_uploader(
+            "Choose a CSV or Excel file",
+            type=['csv', 'xlsx', 'xls'],
+            help="Upload your survey dataset. Supported formats: CSV, Excel (.xlsx, .xls)"
+        )
+        
+        if uploaded_file is not None:
+            try:
+                # Load data based on file type
+                if uploaded_file.name.endswith('.csv'):
+                    df = pd.read_csv(uploaded_file)
+                else:
+                    df = pd.read_excel(uploaded_file)
+                
+                st.success(f"✅ Successfully loaded dataset with {len(df)} rows and {len(df.columns)} columns")
+                
+                # Store in session state
+                if st.session_state.dataset is None or not df.equals(st.session_state.dataset):
+                    st.session_state.dataset = df.copy()
+                    st.session_state.original_dataset = df.copy()
+                    
+                    # Auto-detect column types
+                    st.session_state.column_types = detect_column_types(df)
+                    
+                    # Clear previous analysis
+                    st.session_state.column_analysis = {}
+                    st.session_state.cleaning_history = {}
+                    st.session_state.undo_stack = []
+                    st.session_state.redo_stack = []
+                    
+                    st.info("🔍 Column types automatically detected. You can review and modify them below.")
+                
+            except Exception as e:
+                st.error(f"❌ Error loading file: {str(e)}")
+                st.stop()
+    
+    with import_tab2:
+        from modules.db_connector import render_database_connector_ui
+        render_database_connector_ui()
+    
+    with import_tab3:
+        from modules.db_connector import render_supabase_connector_ui
+        render_supabase_connector_ui()
     
     # Display current dataset info if available
     if st.session_state.dataset is not None:
