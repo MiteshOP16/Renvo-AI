@@ -238,39 +238,45 @@ class SupabaseConnector:
             Tuple of (success: bool, message: str)
         """
         try:
-            project_ref = ""
-            if not custom_host:
-                # Clean input
-                project_url = project_url.strip()
-                if project_url.startswith('https://'):
-                    project_url = project_url[8:]
-                elif project_url.startswith('http://'):
-                    project_url = project_url[7:]
-                
-                if project_url.endswith('/'):
-                    project_url = project_url[:-1]
-                
-                # Check if user entered a full host already (Direct or Pooler)
-                if any(ext in project_url for ext in ['.supabase.co', '.supabase.com', '.pooler.supabase.com']):
-                    host = project_url
-                    project_ref = project_url.split('.')[0]
-                    # If it's a pooler host, auto-set port to 6543
-                    if '.pooler.' in project_url:
-                        port = 6543
-                    else:
-                        port = 5432
+            # 1. Robustly extract the 20-character Project Reference
+            # Clean up the input string
+            clean_url = project_url.strip()
+            if '://' in clean_url:
+                clean_url = clean_url.split('://')[1]
+            if clean_url.endswith('/'):
+                clean_url = clean_url[:-1]
+            
+            # Extract the reference (e.g., from didqekenympuxiuxxwxg.supabase.co)
+            if '.supabase.' in clean_url:
+                parts = clean_url.split('.')
+                # If it starts with 'db.', the ref is the second part
+                if parts[0] == 'db':
+                    project_ref = parts[1]
                 else:
-                    # Treat as project reference
-                    project_ref = project_url
+                    project_ref = parts[0]
+            else:
+                project_ref = clean_url
+
+            # 2. Determine Host and Port
+            if not custom_host:
+                # If user entered a pooler host directly in the main box
+                if '.pooler.' in clean_url or clean_url.endswith('.supabase.com'):
+                    host = clean_url
+                    port = 6543
+                else:
                     host = f"db.{project_ref}.supabase.co"
                     port = 5432
             else:
                 host = custom_host
                 port = custom_port
-                project_ref = project_url
             
+            # 3. Connection Details
             database = "postgres"
-            username = "postgres"
+            # CRITICAL: For Supabase Pooler (Port 6543), username MUST be 'postgres.[project-ref]'
+            if port == 6543:
+                username = f"postgres.{project_ref}"
+            else:
+                username = "postgres"
             
             # URL encode password to handle special characters
             encoded_password = urllib.parse.quote_plus(db_password)
