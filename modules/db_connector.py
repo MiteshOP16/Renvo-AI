@@ -659,59 +659,63 @@ def render_supabase_connector_ui():
         **Note:** Use the database password, NOT the API keys (anon/service_role).
         """)
     
-    # Connection form
-    with st.form("supabase_connection_form"):
-        st.markdown("Enter your Supabase project credentials:")
+    # Connection section (No form here to keep it reactive)
+    st.markdown("Enter your Supabase project credentials:")
+    
+    project_url = st.text_input(
+        "Project URL / Reference",
+        placeholder="https://xxxx.supabase.co or xxxx",
+        help="Your Supabase project URL or 20-character project reference",
+        key="supa_url_input"
+    )
+    
+    db_password = st.text_input(
+        "Database Password",
+        type="password",
+        help="The database password you set when creating the project",
+        key="supa_pass_input"
+    )
+    
+    # Advanced settings (Now reactive because they are outside a blocking form)
+    with st.expander("🛠️ Advanced / Connection Pooler Settings", expanded=False):
+        st.info("💡 If you see 'Cannot assign requested address' or connection failed error, try using the Connection Pooler details from your Supabase dashboard.")
+        use_advanced = st.checkbox("Use Manual Connection Settings (Advanced)", value=False)
         
-        project_url = st.text_input(
-            "Project URL / Reference",
-            placeholder="https://xxxx.supabase.co or xxxx",
-            help="Your Supabase project URL or 20-character project reference"
+        adv_host = st.text_input(
+            "Database Host", 
+            placeholder="aws-0-us-east-1.pooler.supabase.com",
+            help="Found in Supabase Dashboard > Settings > Database > Connection info > Host",
+            disabled=not use_advanced
         )
         
-        db_password = st.text_input(
-            "Database Password",
-            type="password",
-            help="The database password you set when creating the project"
-        )
-        
-        with st.expander("🛠️ Advanced / Connection Pooler Settings"):
-            st.info("💡 If you see 'Cannot assign requested address' or connection failed error, try using the Connection Pooler details from your Supabase dashboard.")
-            use_advanced = st.checkbox("Use Manual Connection Settings (Advanced)", value=False)
-            
-            adv_host = st.text_input(
-                "Database Host", 
-                placeholder="aws-0-us-east-1.pooler.supabase.com",
-                help="Found in Supabase Dashboard > Settings > Database > Connection string > URI",
+        col_a, col_b = st.columns(2)
+        with col_a:
+            adv_port = st.number_input(
+                "Port",
+                min_value=1,
+                max_value=65535,
+                value=6543,
+                help="Default Direct: 5432, Connection Pooler: 6543",
                 disabled=not use_advanced
             )
+        with col_b:
+            # Auto-generate username suggestion if project ref is available
+            suggested_user = "postgres"
+            if project_url:
+                # Basic parsing to get the ref for the label
+                u = project_url.strip().replace('https://', '').replace('http://', '')
+                ref = u.split('.')[1] if u.startswith('db.') else u.split('.')[0]
+                if ref and len(ref) >= 10: # Likely a project ID
+                    suggested_user = f"postgres.{ref}"
             
-            col_a, col_b = st.columns(2)
-            with col_a:
-                adv_port = st.number_input(
-                    "Port",
-                    min_value=1,
-                    max_value=65535,
-                    value=6543,
-                    help="Default Direct: 5432, Connection Pooler: 6543",
-                    disabled=not use_advanced
-                )
-            with col_b:
-                # Auto-generate username suggestion if project ref is available
-                suggested_user = "postgres"
-                if project_url:
-                    ref = project_url.strip().replace('https://', '').replace('http://', '').split('.')[0]
-                    if ref and ref != "db":
-                        suggested_user = f"postgres.{ref}"
-                
-                adv_user = st.text_input(
-                    "Username",
-                    value=suggested_user if adv_port == 6543 else "postgres",
-                    help="Username for the connection. Pooler usually requires 'postgres.[project-ref]'",
-                    disabled=not use_advanced
-                )
-        
-        connect_btn = st.form_submit_button("🔗 Connect to Supabase", type="primary", use_container_width=True)
+            adv_user = st.text_input(
+                "Username",
+                value=suggested_user if adv_port == 6543 else "postgres",
+                help="Username for the connection. Pooler usually requires 'postgres.[project-ref]'",
+                disabled=not use_advanced
+            )
+    
+    connect_btn = st.button("🔗 Connect to Supabase", type="primary", use_container_width=True)
     
     # Handle connection
     if connect_btn:
