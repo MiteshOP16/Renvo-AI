@@ -298,6 +298,41 @@ class SupabaseConnector:
         except SQLAlchemyError as e:
             error_msg = str(e.orig) if hasattr(e, 'orig') else str(e)
             self.is_connected = False
+            
+            # AUTOMATIC RETRY: If direct connection fails on 5432, try the pooler on 6543
+            # This is common for users on IPv4-only networks
+            if not custom_host and port == 5432 and ("Cannot assign requested address" in error_msg or "Network is unreachable" in error_msg):
+                try:
+                    # Supabase pooler host usually uses a different subdomain pattern:
+                    # Direct: db.ref.supabase.co (5432)
+                    # Pooler: aws-0-ref.pooler.supabase.com (6543)
+                    # However, some projects use the same host but different port. 
+                    # We'll first try the same host with 6543 which is often supported.
+                    pooler_port = 6543
+                    pooler_conn_string = f"postgresql+psycopg2://{username}:{encoded_password}@{host}:{pooler_port}/{database}?sslmode=require"
+                    
+                    self.engine = create_engine(pooler_conn_string, pool_pre_ping=True, pool_recycle=3600, echo=False)
+                    
+                    with self.engine.connect() as conn:
+                        conn.execute(text("SELECT 1"))
+                    
+                    self.connection_info = {'project_ref': project_ref, 'host': host, 'port': pooler_port, 'database': database}
+                    self.is_connected = True
+                    return True, f"Successfully connected to Supabase project: {project_ref} (via Connection Pooler)"
+                except Exception:
+                    # If auto-retry fails, proceed to detailed error message below
+                    pass
+
+            # Specific handling for IPv6 / routing issues
+            if "Cannot assign requested address" in error_msg or "Network is unreachable" in error_msg:
+                detailed_msg = (
+                    f"Connection failed: {error_msg}\n\n"
+                    "💡 **Diagnosis:** This happens because your network does not support IPv6, which Supabase direct connections use.\n\n"
+                    "✅ **Fix:** I've added an 'Advanced Settings' section below. Please use the **Connection Pooler Host** "
+                    "(found in Supabase Dashboard > Settings > Database) with port **6543**."
+                )
+                return False, detailed_msg
+                
             return False, f"Connection failed: {error_msg}"
         except Exception as e:
             self.is_connected = False
