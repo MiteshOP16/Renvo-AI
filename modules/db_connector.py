@@ -222,37 +222,47 @@ class SupabaseConnector:
         self.connection_info = {}
         self.is_connected = False
     
-    def connect(self, project_url: str, db_password: str) -> tuple[bool, str]:
+    def connect(self, project_url: str, db_password: str, 
+                custom_host: Optional[str] = None, 
+                custom_port: int = 5432) -> tuple[bool, str]:
         """
         Establish connection to Supabase PostgreSQL database
         
         Args:
-            project_url: Supabase project URL (e.g., https://xxxx.supabase.co)
-            db_password: Database password from Supabase dashboard
+            project_url: Supabase project URL or project reference
+            db_password: Database password
+            custom_host: Optional override for database host
+            custom_port: Optional override for database port
             
         Returns:
             Tuple of (success: bool, message: str)
         """
         try:
-            # Extract project reference from URL
-            # URL format: https://xxxx.supabase.co or xxxx.supabase.co
-            project_url = project_url.strip()
-            if project_url.startswith('https://'):
-                project_url = project_url[8:]
-            if project_url.startswith('http://'):
-                project_url = project_url[7:]
-            if project_url.endswith('/'):
-                project_url = project_url[:-1]
-            
-            # Extract project reference (first part before .supabase.co)
-            if '.supabase.co' in project_url:
-                project_ref = project_url.split('.supabase.co')[0]
+            project_ref = ""
+            if not custom_host:
+                # Extract project reference from URL
+                project_url = project_url.strip()
+                if project_url.startswith('https://'):
+                    project_url = project_url[8:]
+                elif project_url.startswith('http://'):
+                    project_url = project_url[7:]
+                
+                if project_url.endswith('/'):
+                    project_url = project_url[:-1]
+                
+                # Extract project reference (first part before .supabase.co)
+                if '.supabase.co' in project_url:
+                    project_ref = project_url.split('.supabase.co')[0]
+                else:
+                    project_ref = project_url
+                
+                host = f"db.{project_ref}.supabase.co"
+                port = 5432
             else:
-                project_ref = project_url
+                host = custom_host
+                port = custom_port
+                project_ref = project_url # Use project_url as ref if custom host is used
             
-            # Supabase PostgreSQL connection details
-            host = f"db.{project_ref}.supabase.co"
-            port = 5432
             database = "postgres"
             username = "postgres"
             
@@ -621,9 +631,9 @@ def render_supabase_connector_ui():
         st.markdown("Enter your Supabase project credentials:")
         
         project_url = st.text_input(
-            "Project URL",
-            placeholder="https://xxxx.supabase.co",
-            help="Your Supabase project URL from the dashboard"
+            "Project URL / Reference",
+            placeholder="https://xxxx.supabase.co or xxxx",
+            help="Your Supabase project URL or 20-character project reference"
         )
         
         db_password = st.text_input(
@@ -631,6 +641,26 @@ def render_supabase_connector_ui():
             type="password",
             help="The database password you set when creating the project"
         )
+        
+        with st.expander("🛠️ Advanced / Connection Pooler Settings"):
+            st.info("💡 If you see 'Cannot assign requested address' or connection failed error, try using the Connection Pooler details from your Supabase dashboard.")
+            use_advanced = st.checkbox("Use Manual Connection Settings (Advanced)", value=False)
+            
+            adv_host = st.text_input(
+                "Database Host", 
+                placeholder="aws-0-us-east-1.pooler.supabase.com",
+                help="Found in Supabase Dashboard > Settings > Database > Connection string > URI",
+                disabled=not use_advanced
+            )
+            
+            adv_port = st.number_input(
+                "Port",
+                min_value=1,
+                max_value=65535,
+                value=6543,
+                help="Default Direct: 5432, Connection Pooler: 6543",
+                disabled=not use_advanced
+            )
         
         connect_btn = st.form_submit_button("🔗 Connect to Supabase", type="primary", use_container_width=True)
     
@@ -640,9 +670,22 @@ def render_supabase_connector_ui():
             st.error("❌ Please provide both Project URL and Database Password")
             return None
         
+        if use_advanced and not adv_host:
+            st.error("❌ Please provide a Database Host for advanced connection")
+            return None
+        
         with st.spinner("Connecting to Supabase..."):
             connector = SupabaseConnector()
-            success, message = connector.connect(project_url, db_password)
+            
+            if use_advanced:
+                success, message = connector.connect(
+                    project_url, 
+                    db_password, 
+                    custom_host=adv_host, 
+                    custom_port=adv_port
+                )
+            else:
+                success, message = connector.connect(project_url, db_password)
             
             if success:
                 st.session_state.supabase_connector = connector

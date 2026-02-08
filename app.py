@@ -60,7 +60,8 @@ def main():
     uploaded_file = st.file_uploader(
         "Choose a CSV or Excel file",
         type=['csv', 'xlsx', 'xls'],
-        help="Upload your survey dataset. Supported formats: CSV, Excel (.xlsx, .xls)"
+        help="Upload your survey dataset. Supported formats: CSV, Excel (.xlsx, .xls)",
+        key="main_upload"
     )
     
     if uploaded_file is not None:
@@ -100,7 +101,8 @@ def main():
         uploaded_file = st.file_uploader(
             "Choose a CSV or Excel file",
             type=['csv', 'xlsx', 'xls'],
-            help="Upload your survey dataset. Supported formats: CSV, Excel (.xlsx, .xls)"
+            help="Upload your survey dataset. Supported formats: CSV, Excel (.xlsx, .xls)",
+            key="import_tab1_upload"
         )
         
         if uploaded_file is not None:
@@ -336,7 +338,8 @@ def main():
             config_file = st.file_uploader(
                 "📥 Import Configuration",
                 type=['json'],
-                help="Upload a previously exported configuration file"
+                help="Upload a previously exported configuration file",
+                key="config_import_file"
             )
             
             if config_file is not None:
