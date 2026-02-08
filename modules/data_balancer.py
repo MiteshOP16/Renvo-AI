@@ -1,329 +1,864 @@
+"""
+Database Connector Module for Renvo AI
+Provides MySQL database connectivity for importing data
+"""
+
+import streamlit as st
 import pandas as pd
-import numpy as np
-from typing import Dict, Tuple, List, Any, Optional
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder
+from typing import List, Optional, Dict, Any
+from sqlalchemy import create_engine, text, inspect
+from sqlalchemy.exc import SQLAlchemyError
+import urllib.parse
 
 
-class DataBalancer:
-    """Handles various data balancing techniques for imbalanced datasets"""
+class MySQLConnector:
+    """MySQL Database Connector for importing data into Renvo AI"""
     
     def __init__(self):
-        self.balancing_methods = {
-            'Random Oversampling': self._random_oversampling,
-            'SMOTE': self._smote,
-            'Random Undersampling': self._random_undersampling,
-            'Tomek Links': self._tomek_links,
-            'NearMiss-1': self._nearmiss_1,
-            'NearMiss-2': self._nearmiss_2,
-            'NearMiss-3': self._nearmiss_3,
-            'ENN': self._enn,
-            'CNN': self._cnn,
-            'OSS': self._oss,
-            'Cluster Centroids': self._cluster_centroids,
-            'NCR': self._ncr,
-            'SMOTE + Tomek Links': self._smote_tomek,
-            'SMOTE + ENN': self._smote_enn,
-        }
-        self._label_encoder = None
-        self._target_was_encoded = False
+        self.engine = None
+        self.connection_info = {}
+        self.is_connected = False
     
-    def get_available_methods(self) -> Dict[str, List[str]]:
-        """Return categorized list of available balancing methods"""
-        return {
-            'Oversampling': ['Random Oversampling', 'SMOTE'],
-            'Undersampling': [
-                'Random Undersampling', 'Tomek Links', 
-                'NearMiss-1', 'NearMiss-2', 'NearMiss-3',
-                'ENN', 'CNN', 'OSS', 
-                'Cluster Centroids', 'NCR'
-            ],
-            'Hybrid': ['SMOTE + Tomek Links', 'SMOTE + ENN']
-        }
-    
-    def validate_data(self, df: pd.DataFrame, feature_cols: List[str], target_col: str) -> Dict[str, Any]:
-        """Validate data quality before balancing"""
-        errors = []
-        warnings = []
+    def connect(self, host: str, port: int, database: str, 
+                username: str, password: str, use_ssl: bool = False) -> tuple[bool, str]:
+        """
+        Establish connection to MySQL database
         
-        if df is None or df.empty:
-            errors.append("Dataset is empty or not loaded")
-            return {'valid': False, 'errors': errors, 'warnings': warnings}
-        
-        if not feature_cols:
-            errors.append("No feature columns selected")
-        
-        if not target_col:
-            errors.append("No target column selected")
-        
-        if target_col and target_col not in df.columns:
-            errors.append(f"Target column '{target_col}' not found in dataset")
-        
-        for col in feature_cols:
-            if col not in df.columns:
-                errors.append(f"Feature column '{col}' not found in dataset")
-        
-        if target_col and target_col in df.columns:
-            if df[target_col].isnull().any():
-                errors.append(f"Target column '{target_col}' contains missing values. Please clean this column using the Cleaning Wizard first.")
+        Args:
+            host: Database host address
+            port: Database port (default 3306)
+            database: Database name
+            username: Database username
+            password: Database password
+            use_ssl: Whether to use SSL connection
             
-            unique_vals = df[target_col].nunique()
-            if unique_vals < 2:
-                errors.append(f"Target column must have at least 2 classes (found {unique_vals})")
-            elif unique_vals > 10:
-                warnings.append(f"Target column has {unique_vals} classes. Balancing works best with fewer classes.")
-        
-        categorical_features = []
-        for col in feature_cols:
-            if col in df.columns:
-                if df[col].isnull().any():
-                    errors.append(f"Feature column '{col}' contains missing values. Please clean this column using the Cleaning Wizard first.")
-                
-                if not pd.api.types.is_numeric_dtype(df[col]):
-                    categorical_features.append(col)
-        
-        if categorical_features:
-            errors.append(f"Feature columns {categorical_features} are not numeric. Balancing requires numeric features. Please encode categorical variables using the Column Analysis page before balancing, or select only numeric columns.")
-        
-        if len(df) < 10:
-            errors.append("Dataset has fewer than 10 rows. Need more data for balancing.")
-        
-        return {
-            'valid': len(errors) == 0,
-            'errors': errors,
-            'warnings': warnings
-        }
-    
-    def get_class_distribution(self, df: pd.DataFrame, target_col: str) -> pd.Series:
-        """Get the distribution of classes in the target column"""
-        return df[target_col].value_counts().sort_index()
-    
-    def stratified_split(
-        self,
-        df: pd.DataFrame,
-        feature_cols: List[str],
-        target_col: str,
-        test_size: float = 0.2,
-        random_state: int = 42
-    ) -> Dict[str, Any]:
-        """Perform stratified train/test split"""
+        Returns:
+            Tuple of (success: bool, message: str)
+        """
         try:
-            X = df[feature_cols].copy()
-            y = df[target_col].copy()
+            # URL encode password to handle special characters
+            encoded_password = urllib.parse.quote_plus(password)
             
-            X_train, X_test, y_train, y_test = train_test_split(
-                X, y, 
-                test_size=test_size, 
-                stratify=y, 
-                random_state=random_state
+            # Build connection string
+            ssl_args = "?ssl_disabled=false" if use_ssl else ""
+            connection_string = f"mysql+pymysql://{username}:{encoded_password}@{host}:{port}/{database}{ssl_args}"
+            
+            # Create SQLAlchemy engine
+            self.engine = create_engine(
+                connection_string,
+                pool_pre_ping=True,  # Enable connection health checks
+                pool_recycle=3600,   # Recycle connections after 1 hour
+                echo=False           # Disable SQL logging
             )
             
-            train_df = X_train.copy()
-            train_df[target_col] = y_train
+            # Test connection
+            with self.engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
             
-            test_df = X_test.copy()
-            test_df[target_col] = y_test
-            
-            return {
-                'success': True,
-                'train_data': train_df,
-                'test_data': test_df,
-                'train_size': len(train_df),
-                'test_size': len(test_df),
-                'train_distribution': y_train.value_counts().sort_index(),
-                'test_distribution': y_test.value_counts().sort_index()
+            # Store connection info
+            self.connection_info = {
+                'host': host,
+                'port': port,
+                'database': database,
+                'username': username
             }
+            self.is_connected = True
+            
+            return True, f"Successfully connected to {database}@{host}:{port}"
+            
+        except SQLAlchemyError as e:
+            error_msg = str(e.orig) if hasattr(e, 'orig') else str(e)
+            self.is_connected = False
+            return False, f"Connection failed: {error_msg}"
         except Exception as e:
-            return {
-                'success': False,
-                'error': f"Error during stratified split: {str(e)}"
-            }
+            self.is_connected = False
+            return False, f"Connection failed: {str(e)}"
     
-    def _prepare_features(self, X: np.ndarray) -> np.ndarray:
-        """Prepare feature data for sampling - ensure proper NumPy array with correct dtype"""
-        X_prepared = np.asarray(X, dtype=np.float64)
-        if X_prepared.ndim == 1:
-            X_prepared = X_prepared.reshape(-1, 1)
-        return X_prepared
-    
-    def _prepare_target(self, y: np.ndarray) -> Tuple[np.ndarray, Optional[LabelEncoder], bool]:
-        """Prepare target data for sampling - encode if non-numeric, return encoder for inverse transform"""
-        y_prepared = np.asarray(y).ravel()
+    def get_tables(self) -> tuple[List[str], str]:
+        """
+        Get list of all tables in the connected database
         
-        if not np.issubdtype(y_prepared.dtype, np.number):
-            le = LabelEncoder()
-            y_encoded = le.fit_transform(y_prepared)
-            return y_encoded, le, True
+        Returns:
+            Tuple of (table_list: List[str], message: str)
+        """
+        if not self.is_connected or not self.engine:
+            return [], "Not connected to database"
         
-        return y_prepared, None, False
-    
-    def _safe_fit_resample(self, sampler, X: np.ndarray, y: np.ndarray, label_encoder: Optional[LabelEncoder], was_encoded: bool) -> Tuple[np.ndarray, np.ndarray]:
-        """Safely apply fit_resample with proper error handling and label restoration"""
         try:
-            X_resampled, y_resampled = sampler.fit_resample(X, y)
-            
-            if was_encoded and label_encoder is not None:
-                y_resampled = label_encoder.inverse_transform(y_resampled)
-            
-            return X_resampled, y_resampled
+            inspector = inspect(self.engine)
+            tables = inspector.get_table_names()
+            return tables, f"Found {len(tables)} tables"
         except Exception as e:
-            raise RuntimeError(f"Sampling failed: {str(e)}")
+            return [], f"Failed to fetch tables: {str(e)}"
     
-    def balance_data(
-        self, 
-        df: pd.DataFrame, 
-        feature_cols: List[str], 
-        target_col: str, 
-        method: str,
-        random_state: int = 42
-    ) -> Dict[str, Any]:
-        """Apply balancing method to the data"""
+    def get_table_info(self, table_name: str) -> tuple[pd.DataFrame, str]:
+        """
+        Get table schema/structure information
+        
+        Args:
+            table_name: Name of the table
+            
+        Returns:
+            Tuple of (schema_df: DataFrame, message: str)
+        """
+        if not self.is_connected or not self.engine:
+            return pd.DataFrame(), "Not connected to database"
+        
         try:
-            X = df[feature_cols].values
-            y = df[target_col].values
-            
-            original_dist = self.get_class_distribution(df, target_col)
-            
-            if method not in self.balancing_methods:
-                if method in ['GAN Oversampling', 'VAE Oversampling', 'Cost-Sensitive Learning']:
-                    return {
-                        'success': False,
-                        'error': f"{method} is not yet implemented. This advanced method requires additional dependencies.",
-                        'original_distribution': original_dist
-                    }
-                return {
-                    'success': False,
-                    'error': f"Unknown balancing method: {method}",
-                    'original_distribution': original_dist
-                }
-            
-            X_prepared = self._prepare_features(X)
-            y_prepared, label_encoder, was_encoded = self._prepare_target(y)
-            
-            balancer_func = self.balancing_methods[method]
-            X_balanced, y_balanced = balancer_func(X_prepared, y_prepared, random_state, label_encoder, was_encoded)
-            
-            balanced_df = pd.DataFrame(X_balanced, columns=feature_cols)
-            balanced_df[target_col] = y_balanced
-            
-            balanced_dist = balanced_df[target_col].value_counts().sort_index()
-            
-            return {
-                'success': True,
-                'balanced_data': balanced_df,
-                'original_distribution': original_dist,
-                'balanced_distribution': balanced_dist,
-                'method': method,
-                'original_size': len(df),
-                'balanced_size': len(balanced_df)
-            }
-            
+            query = f"DESCRIBE `{table_name}`"
+            df = pd.read_sql(query, self.engine)
+            return df, f"Schema for table '{table_name}'"
         except Exception as e:
-            return {
-                'success': False,
-                'error': f"Error during balancing: {str(e)}",
-                'original_distribution': self.get_class_distribution(df, target_col) if target_col in df.columns else pd.Series()
+            return pd.DataFrame(), f"Failed to get table info: {str(e)}"
+    
+    def get_row_count(self, table_name: str) -> tuple[int, str]:
+        """
+        Get the number of rows in a table
+        
+        Args:
+            table_name: Name of the table
+            
+        Returns:
+            Tuple of (count: int, message: str)
+        """
+        if not self.is_connected or not self.engine:
+            return 0, "Not connected to database"
+        
+        try:
+            query = f"SELECT COUNT(*) as count FROM `{table_name}`"
+            df = pd.read_sql(query, self.engine)
+            count = int(df['count'].iloc[0])
+            return count, f"Table '{table_name}' has {count:,} rows"
+        except Exception as e:
+            return 0, f"Failed to count rows: {str(e)}"
+    
+    def preview_table(self, table_name: str, limit: int = 100) -> tuple[pd.DataFrame, str]:
+        """
+        Preview table data with limited rows
+        
+        Args:
+            table_name: Name of the table
+            limit: Maximum number of rows to return
+            
+        Returns:
+            Tuple of (preview_df: DataFrame, message: str)
+        """
+        if not self.is_connected or not self.engine:
+            return pd.DataFrame(), "Not connected to database"
+        
+        try:
+            query = f"SELECT * FROM `{table_name}` LIMIT {limit}"
+            df = pd.read_sql(query, self.engine)
+            return df, f"Showing {len(df)} rows from '{table_name}'"
+        except Exception as e:
+            return pd.DataFrame(), f"Failed to preview table: {str(e)}"
+    
+    def import_table(self, table_name: str, limit: Optional[int] = None) -> tuple[pd.DataFrame, str]:
+        """
+        Import entire table as DataFrame
+        
+        Args:
+            table_name: Name of the table to import
+            limit: Optional limit on number of rows
+            
+        Returns:
+            Tuple of (data_df: DataFrame, message: str)
+        """
+        if not self.is_connected or not self.engine:
+            return pd.DataFrame(), "Not connected to database"
+        
+        try:
+            if limit:
+                query = f"SELECT * FROM `{table_name}` LIMIT {limit}"
+            else:
+                query = f"SELECT * FROM `{table_name}`"
+            
+            df = pd.read_sql(query, self.engine)
+            return df, f"Imported {len(df):,} rows and {len(df.columns)} columns from '{table_name}'"
+        except Exception as e:
+            return pd.DataFrame(), f"Failed to import table: {str(e)}"
+    
+    def import_query(self, query: str) -> tuple[pd.DataFrame, str]:
+        """
+        Import data using custom SQL query
+        
+        Args:
+            query: SQL query to execute
+            
+        Returns:
+            Tuple of (data_df: DataFrame, message: str)
+        """
+        if not self.is_connected or not self.engine:
+            return pd.DataFrame(), "Not connected to database"
+        
+        try:
+            df = pd.read_sql(query, self.engine)
+            return df, f"Query returned {len(df):,} rows and {len(df.columns)} columns"
+        except Exception as e:
+            return pd.DataFrame(), f"Failed to execute query: {str(e)}"
+    
+    def get_connection_info(self) -> Dict[str, Any]:
+        """Get current connection information (without password)"""
+        return self.connection_info.copy()
+    
+    def disconnect(self):
+        """Close database connection"""
+        if self.engine:
+            self.engine.dispose()
+            self.engine = None
+        self.is_connected = False
+        self.connection_info = {}
+    
+    def __del__(self):
+        """Cleanup on deletion"""
+        self.disconnect()
+
+
+class SupabaseConnector:
+    """Supabase Database Connector for importing data into Renvo AI"""
+    
+    def __init__(self):
+        self.engine = None
+        self.connection_info = {}
+        self.is_connected = False
+    
+    def connect(self, project_url: str, db_password: str, 
+                custom_host: Optional[str] = None, 
+                custom_port: int = 5432) -> tuple[bool, str]:
+        """
+        Establish connection to Supabase PostgreSQL database
+        
+        Args:
+            project_url: Supabase project URL or project reference
+            db_password: Database password
+            custom_host: Optional override for database host
+            custom_port: Optional override for database port
+            
+        Returns:
+            Tuple of (success: bool, message: str)
+        """
+        try:
+            project_ref = ""
+            if not custom_host:
+                # Clean input
+                project_url = project_url.strip()
+                if project_url.startswith('https://'):
+                    project_url = project_url[8:]
+                elif project_url.startswith('http://'):
+                    project_url = project_url[7:]
+                
+                if project_url.endswith('/'):
+                    project_url = project_url[:-1]
+                
+                # Check if user entered a full host already (Direct or Pooler)
+                if any(ext in project_url for ext in ['.supabase.co', '.supabase.com', '.pooler.supabase.com']):
+                    host = project_url
+                    project_ref = project_url.split('.')[0]
+                    # If it's a pooler host, auto-set port to 6543
+                    if '.pooler.' in project_url:
+                        port = 6543
+                    else:
+                        port = 5432
+                else:
+                    # Treat as project reference
+                    project_ref = project_url
+                    host = f"db.{project_ref}.supabase.co"
+                    port = 5432
+            else:
+                host = custom_host
+                port = custom_port
+                project_ref = project_url
+            
+            database = "postgres"
+            username = "postgres"
+            
+            # URL encode password to handle special characters
+            encoded_password = urllib.parse.quote_plus(db_password)
+            
+            # Build PostgreSQL connection string
+            connection_string = f"postgresql+psycopg2://{username}:{encoded_password}@{host}:{port}/{database}?sslmode=require"
+            
+            # Create SQLAlchemy engine
+            self.engine = create_engine(
+                connection_string,
+                pool_pre_ping=True,
+                pool_recycle=3600,
+                echo=False
+            )
+            
+            # Test connection
+            with self.engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+            
+            # Store connection info
+            self.connection_info = {
+                'project_ref': project_ref,
+                'host': host,
+                'port': port,
+                'database': database
             }
+            self.is_connected = True
+            
+            return True, f"Successfully connected to Supabase project: {project_ref}"
+            
+        except SQLAlchemyError as e:
+            error_msg = str(e.orig) if hasattr(e, 'orig') else str(e)
+            self.is_connected = False
+            
+            # AUTOMATIC RETRY: If direct connection fails on 5432, try the pooler on 6543
+            # This is common for users on IPv4-only networks
+            if not custom_host and port == 5432 and ("Cannot assign requested address" in error_msg or "Network is unreachable" in error_msg):
+                try:
+                    # Supabase pooler host usually uses a different subdomain pattern:
+                    # Direct: db.ref.supabase.co (5432)
+                    # Pooler: aws-0-ref.pooler.supabase.com (6543)
+                    # However, some projects use the same host but different port. 
+                    # We'll first try the same host with 6543 which is often supported.
+                    pooler_port = 6543
+                    pooler_conn_string = f"postgresql+psycopg2://{username}:{encoded_password}@{host}:{pooler_port}/{database}?sslmode=require"
+                    
+                    self.engine = create_engine(pooler_conn_string, pool_pre_ping=True, pool_recycle=3600, echo=False)
+                    
+                    with self.engine.connect() as conn:
+                        conn.execute(text("SELECT 1"))
+                    
+                    self.connection_info = {'project_ref': project_ref, 'host': host, 'port': pooler_port, 'database': database}
+                    self.is_connected = True
+                    return True, f"Successfully connected to Supabase project: {project_ref} (via Connection Pooler)"
+                except Exception:
+                    # If auto-retry fails, proceed to detailed error message below
+                    pass
+
+            # Specific handling for IPv6 / routing issues
+            if "Cannot assign requested address" in error_msg or "Network is unreachable" in error_msg:
+                detailed_msg = (
+                    f"Connection failed: {error_msg}\n\n"
+                    "💡 **Diagnosis:** This happens because your network does not support IPv6, which Supabase direct connections use.\n\n"
+                    "✅ **Fix:** I've added an 'Advanced Settings' section below. Please use the **Connection Pooler Host** "
+                    "(found in Supabase Dashboard > Settings > Database) with port **6543**."
+                )
+                return False, detailed_msg
+                
+            return False, f"Connection failed: {error_msg}"
+        except Exception as e:
+            self.is_connected = False
+            return False, f"Connection failed: {str(e)}"
     
-    def _random_oversampling(self, X: np.ndarray, y: np.ndarray, random_state: int, label_encoder: Optional[LabelEncoder], was_encoded: bool) -> Tuple[np.ndarray, np.ndarray]:
-        """Random Oversampling"""
-        from imblearn.over_sampling import RandomOverSampler
-        sampler = RandomOverSampler(random_state=random_state)
-        return self._safe_fit_resample(sampler, X, y, label_encoder, was_encoded)
+    def get_tables(self) -> tuple[List[str], str]:
+        """Get list of all tables in the public schema"""
+        if not self.is_connected or not self.engine:
+            return [], "Not connected to database"
+        
+        try:
+            # Get tables from public schema (default Supabase schema)
+            query = """
+                SELECT table_name 
+                FROM information_schema.tables 
+                WHERE table_schema = 'public' 
+                AND table_type = 'BASE TABLE'
+                ORDER BY table_name
+            """
+            df = pd.read_sql(query, self.engine)
+            tables = df['table_name'].tolist()
+            return tables, f"Found {len(tables)} tables in public schema"
+        except Exception as e:
+            return [], f"Failed to fetch tables: {str(e)}"
     
-    def _smote(self, X: np.ndarray, y: np.ndarray, random_state: int, label_encoder: Optional[LabelEncoder], was_encoded: bool) -> Tuple[np.ndarray, np.ndarray]:
-        """SMOTE (Synthetic Minority Over-sampling Technique)"""
-        from imblearn.over_sampling import SMOTE
-        unique_classes, counts = np.unique(y, return_counts=True)
-        min_samples = counts.min()
-        k_neighbors = min(5, min_samples - 1)
-        if k_neighbors < 1:
-            k_neighbors = 1
-        sampler = SMOTE(random_state=random_state, k_neighbors=k_neighbors)
-        return self._safe_fit_resample(sampler, X, y, label_encoder, was_encoded)
+    def get_table_info(self, table_name: str) -> tuple[pd.DataFrame, str]:
+        """Get table schema/structure information"""
+        if not self.is_connected or not self.engine:
+            return pd.DataFrame(), "Not connected to database"
+        
+        try:
+            query = f"""
+                SELECT 
+                    column_name as "Column",
+                    data_type as "Type",
+                    is_nullable as "Nullable",
+                    column_default as "Default"
+                FROM information_schema.columns 
+                WHERE table_schema = 'public' 
+                AND table_name = '{table_name}'
+                ORDER BY ordinal_position
+            """
+            df = pd.read_sql(query, self.engine)
+            return df, f"Schema for table '{table_name}'"
+        except Exception as e:
+            return pd.DataFrame(), f"Failed to get table info: {str(e)}"
     
-    def _random_undersampling(self, X: np.ndarray, y: np.ndarray, random_state: int, label_encoder: Optional[LabelEncoder], was_encoded: bool) -> Tuple[np.ndarray, np.ndarray]:
-        """Random Undersampling"""
-        from imblearn.under_sampling import RandomUnderSampler
-        sampler = RandomUnderSampler(random_state=random_state)
-        return self._safe_fit_resample(sampler, X, y, label_encoder, was_encoded)
+    def get_row_count(self, table_name: str) -> tuple[int, str]:
+        """Get the number of rows in a table"""
+        if not self.is_connected or not self.engine:
+            return 0, "Not connected to database"
+        
+        try:
+            query = f'SELECT COUNT(*) as count FROM public."{table_name}"'
+            df = pd.read_sql(query, self.engine)
+            count = int(df['count'].iloc[0])
+            return count, f"Table '{table_name}' has {count:,} rows"
+        except Exception as e:
+            return 0, f"Failed to count rows: {str(e)}"
     
-    def _tomek_links(self, X: np.ndarray, y: np.ndarray, random_state: int, label_encoder: Optional[LabelEncoder], was_encoded: bool) -> Tuple[np.ndarray, np.ndarray]:
-        """Tomek Links"""
-        from imblearn.under_sampling import TomekLinks
-        sampler = TomekLinks()
-        return self._safe_fit_resample(sampler, X, y, label_encoder, was_encoded)
+    def preview_table(self, table_name: str, limit: int = 100) -> tuple[pd.DataFrame, str]:
+        """Preview table data with limited rows"""
+        if not self.is_connected or not self.engine:
+            return pd.DataFrame(), "Not connected to database"
+        
+        try:
+            query = f'SELECT * FROM public."{table_name}" LIMIT {limit}'
+            df = pd.read_sql(query, self.engine)
+            return df, f"Showing {len(df)} rows from '{table_name}'"
+        except Exception as e:
+            return pd.DataFrame(), f"Failed to preview table: {str(e)}"
     
-    def _nearmiss_1(self, X: np.ndarray, y: np.ndarray, random_state: int, label_encoder: Optional[LabelEncoder], was_encoded: bool) -> Tuple[np.ndarray, np.ndarray]:
-        """NearMiss-1"""
-        from imblearn.under_sampling import NearMiss
-        sampler = NearMiss(version=1)
-        return self._safe_fit_resample(sampler, X, y, label_encoder, was_encoded)
+    def import_table(self, table_name: str, limit: Optional[int] = None) -> tuple[pd.DataFrame, str]:
+        """Import entire table as DataFrame"""
+        if not self.is_connected or not self.engine:
+            return pd.DataFrame(), "Not connected to database"
+        
+        try:
+            if limit:
+                query = f'SELECT * FROM public."{table_name}" LIMIT {limit}'
+            else:
+                query = f'SELECT * FROM public."{table_name}"'
+            
+            df = pd.read_sql(query, self.engine)
+            return df, f"Imported {len(df):,} rows and {len(df.columns)} columns from '{table_name}'"
+        except Exception as e:
+            return pd.DataFrame(), f"Failed to import table: {str(e)}"
     
-    def _nearmiss_2(self, X: np.ndarray, y: np.ndarray, random_state: int, label_encoder: Optional[LabelEncoder], was_encoded: bool) -> Tuple[np.ndarray, np.ndarray]:
-        """NearMiss-2"""
-        from imblearn.under_sampling import NearMiss
-        sampler = NearMiss(version=2)
-        return self._safe_fit_resample(sampler, X, y, label_encoder, was_encoded)
+    def import_query(self, query: str) -> tuple[pd.DataFrame, str]:
+        """Import data using custom SQL query"""
+        if not self.is_connected or not self.engine:
+            return pd.DataFrame(), "Not connected to database"
+        
+        try:
+            df = pd.read_sql(query, self.engine)
+            return df, f"Query returned {len(df):,} rows and {len(df.columns)} columns"
+        except Exception as e:
+            return pd.DataFrame(), f"Failed to execute query: {str(e)}"
     
-    def _nearmiss_3(self, X: np.ndarray, y: np.ndarray, random_state: int, label_encoder: Optional[LabelEncoder], was_encoded: bool) -> Tuple[np.ndarray, np.ndarray]:
-        """NearMiss-3"""
-        from imblearn.under_sampling import NearMiss
-        sampler = NearMiss(version=3)
-        return self._safe_fit_resample(sampler, X, y, label_encoder, was_encoded)
+    def get_connection_info(self) -> Dict[str, Any]:
+        """Get current connection information (without password)"""
+        return self.connection_info.copy()
     
-    def _enn(self, X: np.ndarray, y: np.ndarray, random_state: int, label_encoder: Optional[LabelEncoder], was_encoded: bool) -> Tuple[np.ndarray, np.ndarray]:
-        """Edited Nearest Neighbours"""
-        from imblearn.under_sampling import EditedNearestNeighbours
-        sampler = EditedNearestNeighbours()
-        return self._safe_fit_resample(sampler, X, y, label_encoder, was_encoded)
+    def disconnect(self):
+        """Close database connection"""
+        if self.engine:
+            self.engine.dispose()
+            self.engine = None
+        self.is_connected = False
+        self.connection_info = {}
     
-    def _cnn(self, X: np.ndarray, y: np.ndarray, random_state: int, label_encoder: Optional[LabelEncoder], was_encoded: bool) -> Tuple[np.ndarray, np.ndarray]:
-        """Condensed Nearest Neighbour"""
-        from imblearn.under_sampling import CondensedNearestNeighbour
-        sampler = CondensedNearestNeighbour(random_state=random_state)
-        return self._safe_fit_resample(sampler, X, y, label_encoder, was_encoded)
+    def __del__(self):
+        """Cleanup on deletion"""
+        self.disconnect()
+
+
+def render_database_connector_ui():
+    """
+    Render the database connection UI in Streamlit
+    Returns the imported DataFrame if successful, None otherwise
+    """
+    from modules.utils import detect_column_types
     
-    def _oss(self, X: np.ndarray, y: np.ndarray, random_state: int, label_encoder: Optional[LabelEncoder], was_encoded: bool) -> Tuple[np.ndarray, np.ndarray]:
-        """One-Sided Selection"""
-        from imblearn.under_sampling import OneSidedSelection
-        sampler = OneSidedSelection(random_state=random_state)
-        return self._safe_fit_resample(sampler, X, y, label_encoder, was_encoded)
+    st.subheader("🔌 Connect to MySQL Database")
     
-    def _cluster_centroids(self, X: np.ndarray, y: np.ndarray, random_state: int, label_encoder: Optional[LabelEncoder], was_encoded: bool) -> Tuple[np.ndarray, np.ndarray]:
-        """Cluster Centroids"""
-        from imblearn.under_sampling import ClusterCentroids
-        sampler = ClusterCentroids(random_state=random_state)
-        return self._safe_fit_resample(sampler, X, y, label_encoder, was_encoded)
+    # Connection form
+    with st.form("mysql_connection_form"):
+        st.markdown("Enter your MySQL database credentials:")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            host = st.text_input(
+                "Host",
+                value="localhost",
+                help="Database server address (e.g., localhost, 192.168.1.100)"
+            )
+            port = st.number_input(
+                "Port",
+                value=3306,
+                min_value=1,
+                max_value=65535,
+                help="MySQL default port is 3306"
+            )
+            database = st.text_input(
+                "Database Name",
+                help="Name of the database to connect to"
+            )
+        
+        with col2:
+            username = st.text_input(
+                "Username",
+                help="Database username"
+            )
+            password = st.text_input(
+                "Password",
+                type="password",
+                help="Database password"
+            )
+            use_ssl = st.checkbox(
+                "Use SSL Connection",
+                value=False,
+                help="Enable for secure connections (recommended for remote databases)"
+            )
+        
+        connect_btn = st.form_submit_button("🔗 Connect to Database", type="primary", use_container_width=True)
     
-    def _ncr(self, X: np.ndarray, y: np.ndarray, random_state: int, label_encoder: Optional[LabelEncoder], was_encoded: bool) -> Tuple[np.ndarray, np.ndarray]:
-        """Neighbourhood Cleaning Rule"""
-        from imblearn.under_sampling import NeighbourhoodCleaningRule
-        sampler = NeighbourhoodCleaningRule()
-        return self._safe_fit_resample(sampler, X, y, label_encoder, was_encoded)
+    # Handle connection
+    if connect_btn:
+        if not all([host, database, username]):
+            st.error("❌ Please fill in Host, Database Name, and Username")
+            return None
+        
+        with st.spinner("Connecting to database..."):
+            connector = MySQLConnector()
+            success, message = connector.connect(host, port, database, username, password, use_ssl)
+            
+            if success:
+                st.session_state.db_connector = connector
+                st.success(f"✅ {message}")
+            else:
+                st.error(f"❌ {message}")
+                return None
     
-    def _smote_tomek(self, X: np.ndarray, y: np.ndarray, random_state: int, label_encoder: Optional[LabelEncoder], was_encoded: bool) -> Tuple[np.ndarray, np.ndarray]:
-        """SMOTE + Tomek Links (Hybrid)"""
-        from imblearn.combine import SMOTETomek
-        from imblearn.over_sampling import SMOTE
-        unique_classes, counts = np.unique(y, return_counts=True)
-        min_samples = counts.min()
-        k_neighbors = min(5, min_samples - 1)
-        if k_neighbors < 1:
-            k_neighbors = 1
-        smote = SMOTE(random_state=random_state, k_neighbors=k_neighbors)
-        sampler = SMOTETomek(random_state=random_state, smote=smote)
-        return self._safe_fit_resample(sampler, X, y, label_encoder, was_encoded)
+    # If connected, show table selection
+    if 'db_connector' in st.session_state and st.session_state.db_connector.is_connected:
+        connector = st.session_state.db_connector
+        
+        st.divider()
+        st.subheader("📋 Select Data to Import")
+        
+        # Get tables
+        tables, msg = connector.get_tables()
+        
+        if not tables:
+            st.warning(f"⚠️ {msg}")
+            return None
+        
+        # Table selection
+        selected_table = st.selectbox(
+            "Select Table",
+            options=tables,
+            help="Choose a table to import"
+        )
+        
+        if selected_table:
+            # Show table info
+            col1, col2 = st.columns([2, 1])
+            
+            with col1:
+                row_count, count_msg = connector.get_row_count(selected_table)
+                st.info(f"📊 {count_msg}")
+            
+            with col2:
+                if st.button("📖 View Schema"):
+                    schema_df, schema_msg = connector.get_table_info(selected_table)
+                    if not schema_df.empty:
+                        st.dataframe(schema_df, use_container_width=True)
+            
+            # Preview table
+            with st.expander("👁️ Preview Table Data", expanded=False):
+                preview_rows = st.slider("Rows to preview", 10, 100, 50)
+                preview_df, preview_msg = connector.preview_table(selected_table, preview_rows)
+                if not preview_df.empty:
+                    st.dataframe(preview_df, use_container_width=True)
+                    st.caption(preview_msg)
+            
+            # Import options
+            st.subheader("📥 Import Options")
+            
+            import_method = st.radio(
+                "Import Method",
+                options=["Import Entire Table", "Import with Row Limit", "Custom SQL Query"],
+                horizontal=True
+            )
+            
+            # Method-specific options
+            row_limit = None
+            custom_query = None
+            
+            if import_method == "Import with Row Limit":
+                row_limit = st.number_input(
+                    "Maximum Rows to Import",
+                    min_value=100,
+                    max_value=1000000,
+                    value=min(10000, row_count) if row_count > 0 else 10000,
+                    step=1000,
+                    help="Limit the number of rows to import for large tables"
+                )
+            
+            elif import_method == "Custom SQL Query":
+                custom_query = st.text_area(
+                    "SQL Query",
+                    value=f"SELECT * FROM `{selected_table}` LIMIT 1000",
+                    height=100,
+                    help="Write a custom SQL query to import specific data"
+                )
+                st.caption("⚠️ Use caution with custom queries. Ensure proper syntax and avoid destructive operations.")
+            
+            # Import button
+            if st.button("📥 Import Data", type="primary", use_container_width=True):
+                with st.spinner("Importing data..."):
+                    
+                    if import_method == "Custom SQL Query" and custom_query:
+                        df, msg = connector.import_query(custom_query)
+                    else:
+                        df, msg = connector.import_table(selected_table, row_limit)
+                    
+                    if not df.empty:
+                        # Store in session state
+                        st.session_state.dataset = df.copy()
+                        st.session_state.original_dataset = df.copy()
+                        
+                        # Auto-detect column types
+                        st.session_state.column_types = detect_column_types(df)
+                        
+                        # Clear previous analysis
+                        st.session_state.column_analysis = {}
+                        st.session_state.cleaning_history = {}
+                        st.session_state.undo_stack = []
+                        st.session_state.redo_stack = []
+                        
+                        st.success(f"✅ {msg}")
+                        st.info("🔍 Column types automatically detected. Review them below and start your analysis!")
+                        
+                        # Show import summary
+                        st.metric("Rows Imported", f"{len(df):,}")
+                        st.metric("Columns Imported", len(df.columns))
+                        
+                        return df
+                    else:
+                        st.error(f"❌ {msg}")
+                        return None
+        
+        # Disconnect button
+        st.divider()
+        if st.button("🔌 Disconnect from Database"):
+            connector.disconnect()
+            del st.session_state.db_connector
+            st.success("Disconnected from database")
+            st.rerun()
     
-    def _smote_enn(self, X: np.ndarray, y: np.ndarray, random_state: int, label_encoder: Optional[LabelEncoder], was_encoded: bool) -> Tuple[np.ndarray, np.ndarray]:
-        """SMOTE + ENN (Hybrid)"""
-        from imblearn.combine import SMOTEENN
-        from imblearn.over_sampling import SMOTE
-        unique_classes, counts = np.unique(y, return_counts=True)
-        min_samples = counts.min()
-        k_neighbors = min(5, min_samples - 1)
-        if k_neighbors < 1:
-            k_neighbors = 1
-        smote = SMOTE(random_state=random_state, k_neighbors=k_neighbors)
-        sampler = SMOTEENN(random_state=random_state, smote=smote)
-        return self._safe_fit_resample(sampler, X, y, label_encoder, was_encoded)
+    return None
+
+
+def render_supabase_connector_ui():
+    """
+    Render the Supabase connection UI in Streamlit
+    Returns the imported DataFrame if successful, None otherwise
+    """
+    from modules.utils import detect_column_types
+    
+    st.subheader("🟢 Connect to Supabase")
+    
+    # Help section
+    with st.expander("ℹ️ How to get your Supabase credentials", expanded=False):
+        st.markdown("""
+        **To connect to your Supabase database:**
+        
+        1. Go to your [Supabase Dashboard](https://supabase.com/dashboard)
+        2. Select your project
+        3. Go to **Settings** → **Database**
+        4. Find your **Project URL** (e.g., `https://xxxx.supabase.co`)
+        5. Find your **Database Password** (the one you set when creating the project)
+        
+        **Note:** Use the database password, NOT the API keys (anon/service_role).
+        """)
+    
+    # Connection form
+    with st.form("supabase_connection_form"):
+        st.markdown("Enter your Supabase project credentials:")
+        
+        project_url = st.text_input(
+            "Project URL / Reference",
+            placeholder="https://xxxx.supabase.co or xxxx",
+            help="Your Supabase project URL or 20-character project reference"
+        )
+        
+        db_password = st.text_input(
+            "Database Password",
+            type="password",
+            help="The database password you set when creating the project"
+        )
+        
+        with st.expander("🛠️ Advanced / Connection Pooler Settings"):
+            st.info("💡 If you see 'Cannot assign requested address' or connection failed error, try using the Connection Pooler details from your Supabase dashboard.")
+            use_advanced = st.checkbox("Use Manual Connection Settings (Advanced)", value=False)
+            
+            adv_host = st.text_input(
+                "Database Host", 
+                placeholder="aws-0-us-east-1.pooler.supabase.com",
+                help="Found in Supabase Dashboard > Settings > Database > Connection string > URI",
+                disabled=not use_advanced
+            )
+            
+            adv_port = st.number_input(
+                "Port",
+                min_value=1,
+                max_value=65535,
+                value=6543,
+                help="Default Direct: 5432, Connection Pooler: 6543",
+                disabled=not use_advanced
+            )
+        
+        connect_btn = st.form_submit_button("🔗 Connect to Supabase", type="primary", use_container_width=True)
+    
+    # Handle connection
+    if connect_btn:
+        if not all([project_url, db_password]):
+            st.error("❌ Please provide both Project URL and Database Password")
+            return None
+        
+        if use_advanced and not adv_host:
+            st.error("❌ Please provide a Database Host for advanced connection")
+            return None
+        
+        with st.spinner("Connecting to Supabase..."):
+            connector = SupabaseConnector()
+            
+            if use_advanced:
+                success, message = connector.connect(
+                    project_url, 
+                    db_password, 
+                    custom_host=adv_host, 
+                    custom_port=adv_port
+                )
+            else:
+                success, message = connector.connect(project_url, db_password)
+            
+            if success:
+                st.session_state.supabase_connector = connector
+                st.success(f"✅ {message}")
+            else:
+                st.error(f"❌ {message}")
+                return None
+    
+    # If connected, show table selection
+    if 'supabase_connector' in st.session_state and st.session_state.supabase_connector.is_connected:
+        connector = st.session_state.supabase_connector
+        
+        st.divider()
+        st.subheader("📋 Select Data to Import")
+        
+        # Get tables
+        tables, msg = connector.get_tables()
+        
+        if not tables:
+            st.warning(f"⚠️ {msg}")
+            st.info("💡 Make sure you have tables in the 'public' schema of your Supabase database.")
+            return None
+        
+        # Table selection
+        selected_table = st.selectbox(
+            "Select Table",
+            options=tables,
+            help="Choose a table to import",
+            key="supabase_table_select"
+        )
+        
+        if selected_table:
+            # Show table info
+            col1, col2 = st.columns([2, 1])
+            
+            with col1:
+                row_count, count_msg = connector.get_row_count(selected_table)
+                st.info(f"📊 {count_msg}")
+            
+            with col2:
+                if st.button("📖 View Schema", key="supabase_schema_btn"):
+                    schema_df, schema_msg = connector.get_table_info(selected_table)
+                    if not schema_df.empty:
+                        st.dataframe(schema_df, use_container_width=True)
+            
+            # Preview table
+            with st.expander("👁️ Preview Table Data", expanded=False):
+                preview_rows = st.slider("Rows to preview", 10, 100, 50, key="supabase_preview_slider")
+                preview_df, preview_msg = connector.preview_table(selected_table, preview_rows)
+                if not preview_df.empty:
+                    st.dataframe(preview_df, use_container_width=True)
+                    st.caption(preview_msg)
+            
+            # Import options
+            st.subheader("📥 Import Options")
+            
+            import_method = st.radio(
+                "Import Method",
+                options=["Import Entire Table", "Import with Row Limit", "Custom SQL Query"],
+                horizontal=True,
+                key="supabase_import_method"
+            )
+            
+            # Method-specific options
+            row_limit = None
+            custom_query = None
+            
+            if import_method == "Import with Row Limit":
+                row_limit = st.number_input(
+                    "Maximum Rows to Import",
+                    min_value=100,
+                    max_value=1000000,
+                    value=min(10000, row_count) if row_count > 0 else 10000,
+                    step=1000,
+                    help="Limit the number of rows to import for large tables",
+                    key="supabase_row_limit"
+                )
+            
+            elif import_method == "Custom SQL Query":
+                custom_query = st.text_area(
+                    "SQL Query",
+                    value=f'SELECT * FROM public."{selected_table}" LIMIT 1000',
+                    height=100,
+                    help="Write a custom SQL query to import specific data",
+                    key="supabase_custom_query"
+                )
+                st.caption("⚠️ Use PostgreSQL syntax. Tables are in the 'public' schema by default.")
+            
+            # Import button
+            if st.button("📥 Import Data", type="primary", use_container_width=True, key="supabase_import_btn"):
+                with st.spinner("Importing data from Supabase..."):
+                    
+                    if import_method == "Custom SQL Query" and custom_query:
+                        df, msg = connector.import_query(custom_query)
+                    else:
+                        df, msg = connector.import_table(selected_table, row_limit)
+                    
+                    if not df.empty:
+                        # Store in session state
+                        st.session_state.dataset = df.copy()
+                        st.session_state.original_dataset = df.copy()
+                        
+                        # Auto-detect column types
+                        st.session_state.column_types = detect_column_types(df)
+                        
+                        # Clear previous analysis
+                        st.session_state.column_analysis = {}
+                        st.session_state.cleaning_history = {}
+                        st.session_state.undo_stack = []
+                        st.session_state.redo_stack = []
+                        
+                        st.success(f"✅ {msg}")
+                        st.info("🔍 Column types automatically detected. Review them below and start your analysis!")
+                        
+                        # Show import summary
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.metric("Rows Imported", f"{len(df):,}")
+                        with col2:
+                            st.metric("Columns Imported", len(df.columns))
+                        
+                        return df
+                    else:
+                        st.error(f"❌ {msg}")
+                        return None
+        
+        # Disconnect button
+        st.divider()
+        if st.button("🔌 Disconnect from Supabase", key="supabase_disconnect_btn"):
+            connector.disconnect()
+            del st.session_state.supabase_connector
+            st.success("Disconnected from Supabase")
+            st.rerun()
+    
+    return None
