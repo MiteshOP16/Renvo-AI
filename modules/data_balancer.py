@@ -224,42 +224,27 @@ class SupabaseConnector:
     
     def connect(self, project_url: str, db_password: str, 
                 custom_host: Optional[str] = None, 
-                custom_port: int = 5432) -> tuple[bool, str]:
+                custom_port: int = 5432,
+                custom_user: Optional[str] = None) -> tuple[bool, str]:
         """
         Establish connection to Supabase PostgreSQL database
-        
-        Args:
-            project_url: Supabase project URL or project reference
-            db_password: Database password
-            custom_host: Optional override for database host
-            custom_port: Optional override for database port
-            
-        Returns:
-            Tuple of (success: bool, message: str)
         """
         try:
             # 1. Robustly extract the 20-character Project Reference
-            # Clean up the input string
             clean_url = project_url.strip()
             if '://' in clean_url:
                 clean_url = clean_url.split('://')[1]
             if clean_url.endswith('/'):
                 clean_url = clean_url[:-1]
             
-            # Extract the reference (e.g., from didqekenympuxiuxxwxg.supabase.co)
             if '.supabase.' in clean_url:
                 parts = clean_url.split('.')
-                # If it starts with 'db.', the ref is the second part
-                if parts[0] == 'db':
-                    project_ref = parts[1]
-                else:
-                    project_ref = parts[0]
+                project_ref = parts[1] if parts[0] == 'db' else parts[0]
             else:
                 project_ref = clean_url
 
-            # 2. Determine Host and Port
+            # 2. Determine Host, Port, and User
             if not custom_host:
-                # If user entered a pooler host directly in the main box
                 if '.pooler.' in clean_url or clean_url.endswith('.supabase.com'):
                     host = clean_url
                     port = 6543
@@ -272,8 +257,9 @@ class SupabaseConnector:
             
             # 3. Connection Details
             database = "postgres"
-            # CRITICAL: For Supabase Pooler (Port 6543), username MUST be 'postgres.[project-ref]'
-            if port == 6543:
+            if custom_user:
+                username = custom_user
+            elif port == 6543:
                 username = f"postgres.{project_ref}"
             else:
                 username = "postgres"
@@ -700,14 +686,30 @@ def render_supabase_connector_ui():
                 disabled=not use_advanced
             )
             
-            adv_port = st.number_input(
-                "Port",
-                min_value=1,
-                max_value=65535,
-                value=6543,
-                help="Default Direct: 5432, Connection Pooler: 6543",
-                disabled=not use_advanced
-            )
+            col_a, col_b = st.columns(2)
+            with col_a:
+                adv_port = st.number_input(
+                    "Port",
+                    min_value=1,
+                    max_value=65535,
+                    value=6543,
+                    help="Default Direct: 5432, Connection Pooler: 6543",
+                    disabled=not use_advanced
+                )
+            with col_b:
+                # Auto-generate username suggestion if project ref is available
+                suggested_user = "postgres"
+                if project_url:
+                    ref = project_url.strip().replace('https://', '').replace('http://', '').split('.')[0]
+                    if ref and ref != "db":
+                        suggested_user = f"postgres.{ref}"
+                
+                adv_user = st.text_input(
+                    "Username",
+                    value=suggested_user if adv_port == 6543 else "postgres",
+                    help="Username for the connection. Pooler usually requires 'postgres.[project-ref]'",
+                    disabled=not use_advanced
+                )
         
         connect_btn = st.form_submit_button("🔗 Connect to Supabase", type="primary", use_container_width=True)
     
@@ -729,7 +731,8 @@ def render_supabase_connector_ui():
                     project_url, 
                     db_password, 
                     custom_host=adv_host, 
-                    custom_port=adv_port
+                    custom_port=adv_port,
+                    custom_user=adv_user
                 )
             else:
                 success, message = connector.connect(project_url, db_password)
