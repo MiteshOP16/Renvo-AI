@@ -648,15 +648,23 @@ def render_supabase_connector_ui():
     # Help section
     with st.expander("ℹ️ How to get your Supabase credentials", expanded=False):
         st.markdown("""
-        **To connect to your Supabase database:**
-        
+        ### Option 1: Direct Connection (Quickest)
         1. Go to your [Supabase Dashboard](https://supabase.com/dashboard)
         2. Select your project
         3. Go to **Settings** → **Database**
         4. Find your **Project URL** (e.g., `https://xxxx.supabase.co`)
-        5. Find your **Database Password** (the one you set when creating the project)
+        5. Use your **Database Password** (set during project creation)
         
-        **Note:** Use the database password, NOT the API keys (anon/service_role).
+        ### Option 2: Connection Pooler (Recommended for networking issues)
+        *Use this if you see "Cannot assign requested address" or "Network is unreachable" errors.*
+        
+        1. In the Supabase Dashboard, go to **Settings** → **Database**
+        2. Scroll down to the **Connection Pooler** section
+        3. Copy the **Host** (e.g., `aws-0-xxxx.pooler.supabase.com`)
+        4. Ensure **Port** is set to `6543` and **Mode** is set to `Transaction`
+        5. In this app, expand **Advanced Settings**, check **Manual Settings**, and paste the host.
+        
+        **Note:** Always use the database password, NOT the API keys (anon/service_role).
         """)
     
     # Connection section (No form here to keep it reactive)
