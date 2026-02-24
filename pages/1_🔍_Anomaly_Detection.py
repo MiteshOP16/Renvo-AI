@@ -301,7 +301,7 @@ with tab1:
                         st.rerun()
                 
                 with col_cancel:
-                    if st.button("❌ Cancel", use_container_width=True):
+                    if st.button("❌ Cancel", key="cancel_anomaly_fix", use_container_width=True):
                         st.info("Operation cancelled.")
             
             else:
@@ -528,7 +528,7 @@ with tab2:
                 st.rerun()
         
         with col_cancel:
-            if st.button("❌ Cancel", use_container_width=True):
+            if st.button("❌ Cancel", key="cancel_duplicate_removal", use_container_width=True):
                 st.info("Operation cancelled.")
     
     else:
